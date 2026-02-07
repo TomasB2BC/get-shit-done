@@ -47,6 +47,13 @@ mkdir -p .planning
     "research": true,
     "plan_check": true,
     "verifier": true
+  },
+  "orchestration": "classic",
+  "agent_teams": {
+    "research": false,
+    "debug": false,
+    "verification": false,
+    "codebase_mapping": false
   }
 }
 ```
@@ -59,12 +66,7 @@ Read current config:
 cat .planning/config.json
 ```
 
-Update `model_profile` field:
-```json
-{
-  "model_profile": "$ARGUMENTS.profile"
-}
-```
+Read ALL current field values from the existing config. Then write the complete config back with ONLY the model_profile field changed to the new value. All other fields (mode, depth, parallelization, commit_docs, workflow, git, orchestration, agent_teams) must be preserved exactly as they were.
 
 Write updated config back to `.planning/config.json`.
 
