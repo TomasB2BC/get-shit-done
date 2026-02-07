@@ -32,6 +32,13 @@ mkdir -p .planning
     "research": true,
     "plan_check": true,
     "verifier": true
+  },
+  "orchestration": "classic",
+  "agent_teams": {
+    "research": false,
+    "debug": false,
+    "verification": false,
+    "codebase_mapping": false
   }
 }
 ```
@@ -49,6 +56,11 @@ Parse current values (default to `true` if not present):
 - `workflow.verifier` — spawn verifier during execute-phase
 - `model_profile` — which model each agent uses (default: `balanced`)
 - `git.branching_strategy` — branching approach (default: `"none"`)
+- `orchestration` — orchestration mode (default: `"classic"`)
+- `agent_teams.research` — Agent Teams for research (default: `false`)
+- `agent_teams.debug` — Agent Teams for debug (default: `false`)
+- `agent_teams.verification` — Agent Teams for verification (default: `false`)
+- `agent_teams.codebase_mapping` — Agent Teams for codebase mapping (default: `false`)
 
 ## 3. Present Settings
 
@@ -102,6 +114,51 @@ AskUserQuestion([
       { label: "Per Phase", description: "Create branch for each phase (gsd/phase-{N}-{name})" },
       { label: "Per Milestone", description: "Create branch for entire milestone (gsd/{version}-{name})" }
     ]
+  },
+  {
+    question: "Orchestration mode?",
+    header: "Orchestration",
+    multiSelect: false,
+    options: [
+      { label: "Classic (Recommended)", description: "Task subagents only - stable, well-tested" },
+      { label: "Hybrid (Experimental)", description: "Agent Teams where beneficial - higher token cost, richer collaboration" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for research? (collaborative researchers with debate)",
+    header: "AT: Research",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Task subagents (classic)" },
+      { label: "Yes", description: "Agent Teams with inter-agent debate (hybrid)" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for debugging? (competing hypotheses pattern)",
+    header: "AT: Debug",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Single Task debugger (classic)" },
+      { label: "Yes", description: "3-5 teammates testing different theories (hybrid)" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for verification? (adversarial validation)",
+    header: "AT: Verification",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Single Task verifier (classic)" },
+      { label: "Yes", description: "Validator + breaker + reviewer team (hybrid)" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for codebase mapping? (collaborative exploration)",
+    header: "AT: Mapping",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Parallel Task mappers (classic)" },
+      { label: "Yes", description: "Teammates with cross-referencing (hybrid)" }
+    ]
   }
 ])
 ```
@@ -123,9 +180,20 @@ Merge new settings into existing config.json:
   },
   "git": {
     "branching_strategy": "none" | "phase" | "milestone"
+  },
+  "orchestration": "classic" | "hybrid",
+  "agent_teams": {
+    "research": true/false,
+    "debug": true/false,
+    "verification": true/false,
+    "codebase_mapping": true/false
   }
 }
 ```
+
+Mapping notes:
+- "Classic (Recommended)" -> "classic", "Hybrid (Experimental)" -> "hybrid"
+- "Yes" -> true, "No" -> false for each AT toggle
 
 Write updated config to `.planning/config.json`.
 
@@ -145,6 +213,14 @@ Display:
 | Plan Checker         | {On/Off} |
 | Execution Verifier   | {On/Off} |
 | Git Branching        | {None/Per Phase/Per Milestone} |
+| Orchestration        | {Classic/Hybrid} |
+| AT: Research         | {On/Off} |
+| AT: Debug            | {On/Off} |
+| AT: Verification     | {On/Off} |
+| AT: Mapping          | {On/Off} |
+
+Note: Agent Teams (AT) settings only take effect when Orchestration is Hybrid
+and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set in your environment.
 
 These settings apply to future /gsd:plan-phase and /gsd:execute-phase runs.
 
@@ -159,7 +235,7 @@ Quick commands:
 
 <success_criteria>
 - [ ] Current config read
-- [ ] User presented with 5 settings (profile + 3 workflow toggles + git branching)
-- [ ] Config updated with model_profile, workflow, and git sections
+- [ ] User presented with 10 settings (profile + 3 workflow + branching + orchestration + 4 AT toggles)
+- [ ] Config updated with model_profile, workflow, git, orchestration, and agent_teams sections
 - [ ] Changes confirmed to user
 </success_criteria>
