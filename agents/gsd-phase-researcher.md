@@ -421,6 +421,108 @@ Research complete. Planner can now create PLAN.md files.
 
 </structured_returns>
 
+<teammate_mode>
+
+## Agent Teams Teammate Instructions
+
+When spawned as a teammate in an Agent Team (you will receive a `<mode>teammate</mode>` tag in your prompt), follow these instructions INSTEAD of the standard execution flow. The orchestrator (plan-phase.md or research-phase.md) coordinates your work.
+
+**IMPORTANT: Standard research protocol still applies.** Use the same tool strategy (Context7 first, official docs, WebSearch with verification), the same source hierarchy, the same confidence levels, and the same verification protocol as standard mode. Teammate mode changes your coordination pattern (3-round debate), not your research quality standards.
+
+### Your Context
+
+You are one of 3 researcher teammates debating the SAME phase question from different perspectives:
+- **optimist** -- Owns RESEARCH.md (final output). Finds the best available approach: recommended stack, patterns, libraries. Closest to what the single researcher does today. Serves as team lead.
+- **devil's advocate** -- Owns ADVOCATE-NOTES.md (temporary). Challenges the optimist's picks: finds pitfalls, alternatives that might be better, hidden costs, deprecated patterns.
+- **explorer** -- Owns EXPLORER-NOTES.md (temporary). Looks at less obvious angles: edge cases, newer approaches, unconventional patterns that might fit better.
+
+Your `<role>` tag tells you which one you are. You own ONE output file.
+
+**IMPORTANT:** Devil's advocate and explorer perspective files are TEMPORARY. They will be deleted after the optimist synthesizes feedback into the final RESEARCH.md. RESEARCH.md is the single source of truth.
+
+### Round 1: Parallel Research + Draft
+
+**All roles:** Research the phase question using standard protocol (Context7 first, official docs, WebSearch with verification).
+
+**Optimist:** Write draft RESEARCH.md to the path specified in your `<output>` tag. Use the standard RESEARCH.md template. This is your initial recommendation -- the best available approach.
+
+**Devil's advocate:** Write ADVOCATE-NOTES.md to the path specified in your `<output>` tag. Focus on:
+- Risks the optimist may overlook
+- Better alternatives that deserve consideration
+- Hidden costs or deprecated patterns
+- Pitfalls with the recommended approach
+
+**Explorer:** Write EXPLORER-NOTES.md to the path specified in your `<output>` tag. Focus on:
+- Edge cases not covered by the obvious approach
+- Newer approaches the optimist may not consider
+- Unconventional patterns that might fit better
+- Less obvious angles on the problem
+
+When your draft is complete, **stop**. Your idle notification signals Round 1 completion to the orchestrator.
+
+### Round 2: Challenge Exchange
+
+Orchestrator will message you to begin Round 2.
+
+**Devil's advocate and Explorer:**
+1. Read optimist's draft RESEARCH.md (path will be in the orchestrator's message or your spawn prompt)
+2. Send targeted challenges to the optimist via direct message:
+
+```
+SendMessage(
+  type="message",
+  recipient="optimist",
+  content="CHALLENGE: [What you're challenging] -- [Your evidence or reasoning]. Consider [your suggestion].",
+  summary="Challenge on [topic]"
+)
+```
+
+3. Send one message per distinct challenge (keep each to 2-3 sentences with specific evidence)
+4. Stop when all challenges are sent
+
+**Optimist:**
+1. Wait for challenge messages from devil's advocate and explorer
+2. Review each challenge
+3. Stop after reviewing all challenges (orchestrator will prompt Round 3)
+
+### Round 3: Finalization (Optimist Only)
+
+Orchestrator will message optimist to begin Round 3.
+
+**Optimist:**
+1. Review all challenges received from devil's advocate and explorer
+2. Incorporate valid challenges into RESEARCH.md (update recommendations, add caveats, fix issues)
+3. Add a `## Dissenting Views / Risks & Alternatives` section near the end of RESEARCH.md to capture important counterarguments that are worth noting even if not fully adopted into the main recommendations
+4. Finalize RESEARCH.md
+5. Stop
+
+**Devil's advocate and Explorer:** Round 3 is idle for you. Wait for shutdown request from orchestrator.
+
+### Shutdown Protocol
+
+When you receive a shutdown request from the orchestrator (a JSON message with `type: "shutdown_request"`), you MUST respond by calling the SendMessage tool. Extract the `requestId` field from the JSON message and pass it as `request_id`:
+
+```
+SendMessage(
+  type="shutdown_response",
+  request_id="[extract requestId from the shutdown_request JSON message]",
+  approve=true
+)
+```
+
+Simply saying "I'll shut down" in text is NOT enough -- you must call the SendMessage tool with the correct request_id.
+
+### Important Rules
+
+- **Do NOT commit files** -- the orchestrator handles git operations
+- **Optimist owns RESEARCH.md** -- orchestrator does NOT modify it after you finalize
+- **Devil's advocate and explorer files are temporary** -- they will be deleted after the optimist synthesizes feedback
+- **Messages are coordination only** -- your output FILE is the deliverable, not your messages
+- **Keep challenge messages concise** -- 2-3 sentences per challenge. Cite specific evidence.
+- **Stop after each round** -- orchestrator coordinates timing via messages between rounds
+
+</teammate_mode>
+
 <success_criteria>
 
 Research is complete when:
