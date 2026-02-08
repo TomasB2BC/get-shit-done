@@ -581,6 +581,100 @@ In `.planning/research/`:
 
 </structured_returns>
 
+<teammate_mode>
+
+## Agent Teams Teammate Instructions
+
+When spawned as a teammate in an Agent Team (you will receive a `<mode>teammate</mode>` tag in your prompt), follow these instructions INSTEAD of the standard execution flow. The orchestrator (new-project.md or new-milestone.md) coordinates your work.
+
+**IMPORTANT: Standard research protocol still applies.** Use the same tool strategy (Context7 first, official docs, WebSearch with verification), the same source hierarchy, the same confidence levels, and the same verification protocol as standard mode. Teammate mode changes your coordination pattern (broadcast/challenge), not your research quality standards.
+
+### Your Context
+
+You are one of 4 researcher teammates:
+- **stack-researcher** -- Owns STACK.md
+- **features-researcher** -- Owns FEATURES.md
+- **architecture-researcher** -- Owns ARCHITECTURE.md
+- **pitfalls-researcher** -- Owns PITFALLS.md
+
+Your `<dimension>` tag tells you which one you are. You own ONE output file.
+
+### Round 1: Draft + Broadcast
+
+1. **Research your dimension** using the same tool strategy as standard mode (Context7 first, official docs, WebSearch with verification)
+2. **Write your draft output file** to `.planning/research/[YOUR_FILE].md` using the standard template
+3. **Broadcast key findings** to all teammates using SendMessage:
+
+```
+SendMessage(
+  type="broadcast",
+  content="[DIMENSION] key findings:
+  * Main recommendation: [your top recommendation with rationale]
+  * Cross-dimension dependencies: [constraints or requirements that affect other researchers]
+  * Confidence: [HIGH/MEDIUM/LOW] -- [brief reason]
+  * Gaps: [what you could not verify or are uncertain about]",
+  summary="[Dimension] Round 1 findings"
+)
+```
+
+4. **Wait** -- your broadcast and draft file signal Round 1 completion. The orchestrator will message you when Round 2 begins.
+
+### Round 2: Challenge + Finalize
+
+The orchestrator sends you a message to begin Round 2. You will have received broadcasts from all other teammates.
+
+1. **Review teammate broadcasts** -- read the key findings from the other 3 researchers
+2. **Send challenges or reinforcements** via direct message to specific teammates:
+
+**Challenge** (when you find a contradiction):
+```
+SendMessage(
+  type="message",
+  recipient="[teammate-name]",
+  content="CHALLENGE: [What contradicts] -- Your [finding] conflicts with my [finding] because [evidence]. Consider [suggestion].",
+  summary="Challenge on [topic]"
+)
+```
+
+**Reinforce** (when findings align and increase confidence):
+```
+SendMessage(
+  type="message",
+  recipient="[teammate-name]",
+  content="REINFORCE: [What aligns] -- Your [finding] confirms my [finding]. This increases confidence because [reason].",
+  summary="Reinforce [topic]"
+)
+```
+
+3. **Address challenges received** -- if other researchers challenge your findings, investigate and update your file if warranted
+4. **Finalize your output file** -- revise `.planning/research/[YOUR_FILE].md` with any updates from the debate
+5. **Stop** -- when your file is finalized, simply stop. Your idle notification signals Round 2 completion to the orchestrator.
+
+### Shutdown Protocol
+
+When you receive a shutdown request from the orchestrator (a JSON message with `type: "shutdown_request"`), you MUST respond by calling the SendMessage tool. Extract the `requestId` field from the JSON message and pass it as `request_id`:
+
+```
+SendMessage(
+  type="shutdown_response",
+  request_id="[extract requestId from the shutdown_request JSON message]",
+  approve=true
+)
+```
+
+Simply saying "I'll shut down" in text is NOT enough -- you must call the SendMessage tool with the correct request_id.
+
+### Important Rules
+
+- **Do NOT commit files** -- the orchestrator commits all research files together after synthesis
+- **Do NOT write SUMMARY.md** -- the orchestrator handles synthesis
+- **Messages are coordination only** -- your output FILE is the deliverable, not your messages
+- **Stay focused on your dimension** -- you own one file. Challenge others on cross-dimension issues, but don't try to rewrite their files
+- **Broadcast exactly once** in Round 1 -- one broadcast per researcher keeps noise manageable
+- **Keep challenge/reinforce messages concise** -- 2-3 sentences per message. Cite specific evidence.
+
+</teammate_mode>
+
 <success_criteria>
 
 Research is complete when:
