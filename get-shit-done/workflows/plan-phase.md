@@ -131,6 +131,234 @@ Write to: {phase_dir}/{phase}-RESEARCH.md
 </output>
 ```
 
+### Detect Orchestration Mode
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check
+  AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "[!] WARNING: orchestration=hybrid but Agent Teams not available or research not enabled"
+  echo "[!] Falling back to classic mode"
+fi
+```
+
+### Branch: Hybrid Research (Agent Teams - 3-Perspective Debate)
+
+**If `USE_HYBRID=true`:**
+
+Display hybrid indicator:
+```
+>> Using Agent Teams for phase research (hybrid mode)
+>> 3-round debate protocol: optimist + devil's advocate + explorer
+```
+
+**Step H1: Create research team**
+
+```bash
+PADDED_PHASE=$(printf "%02d" "$PHASE")
+TEAM_NAME="phase-${PADDED_PHASE}-research"
+```
+
+```
+TeamCreate(
+  team_name="${TEAM_NAME}",
+  description="Phase ${PHASE} research - 3 perspectives (optimist, advocate, explorer)"
+)
+```
+
+**Handle TeamCreate failure:**
+```bash
+FALLBACK_TO_CLASSIC=false
+# If TeamCreate fails, set FALLBACK_TO_CLASSIC=true and display warning:
+# "[!] WARNING: Agent Teams team creation failed, falling back to classic mode"
+```
+
+**Step H2: Spawn 3 researcher teammates**
+
+Spawn all 3 in parallel. Each Task prompt includes:
+- `<mode>teammate</mode>`
+- `<team_name>${TEAM_NAME}</team_name>`
+- `<role>optimist</role>` (or devil's-advocate, or explorer)
+- Reference to agent file
+- Research prompt content
+
+**Optimist teammate:**
+```
+Task(
+  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>optimist</role>\n\n" + research_prompt,
+  subagent_type="general-purpose",
+  model="{researcher_model}",
+  description="Research Phase {phase} (optimist)",
+  team_name="${TEAM_NAME}",
+  name="optimist"
+)
+```
+
+**Devil's Advocate teammate:**
+```
+Task(
+  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>devil's-advocate</role>\n\n" + research_prompt_modified_for_advocate,
+  subagent_type="general-purpose",
+  model="{researcher_model}",
+  description="Research Phase {phase} (devil's advocate)",
+  team_name="${TEAM_NAME}",
+  name="devil's-advocate"
+)
+```
+
+Note: For devil's advocate, modify output section:
+```
+<output>
+Write to: {phase_dir}/ADVOCATE-NOTES.md
+</output>
+```
+
+**Explorer teammate:**
+```
+Task(
+  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>explorer</role>\n\n" + research_prompt_modified_for_explorer,
+  subagent_type="general-purpose",
+  model="{researcher_model}",
+  description="Research Phase {phase} (explorer)",
+  team_name="${TEAM_NAME}",
+  name="explorer"
+)
+```
+
+Note: For explorer, modify output section:
+```
+<output>
+Write to: {phase_dir}/EXPLORER-NOTES.md
+</output>
+```
+
+**Handle spawn failures:**
+```bash
+SPAWNED_COUNT=3  # Or actual count from successful spawns
+if [ "$SPAWNED_COUNT" -lt 2 ]; then
+  FALLBACK_TO_CLASSIC=true
+  echo "[!] WARNING: Fewer than 2 teammates spawned successfully, falling back to classic mode"
+fi
+```
+
+**Step H3: Wait for Round 1 completion**
+
+Wait for all spawned teammates to report idle.
+
+```bash
+# Verify draft files exist
+ls "${PHASE_DIR}"/*-RESEARCH.md 2>/dev/null
+ls "${PHASE_DIR}"/ADVOCATE-NOTES.md 2>/dev/null
+ls "${PHASE_DIR}"/EXPLORER-NOTES.md 2>/dev/null
+```
+
+**Step H4: Prompt Round 2 (Challenge Exchange)**
+
+Send messages to active teammates:
+
+```
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="devil's-advocate",
+  message="Round 2: Review the optimist's draft in ${PHASE_DIR}/*-RESEARCH.md. Challenge the approach and identify risks. Update your ADVOCATE-NOTES.md with specific concerns."
+)
+
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="explorer",
+  message="Round 2: Review the optimist's draft in ${PHASE_DIR}/*-RESEARCH.md. Identify unconventional alternatives or overlooked opportunities. Update your EXPLORER-NOTES.md."
+)
+
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="optimist",
+  message="Round 2: Review challenges from ADVOCATE-NOTES.md and insights from EXPLORER-NOTES.md. Prepare to address them in Round 3."
+)
+```
+
+**Step H5: Wait for Round 2 completion**
+
+Wait for all active teammates to go idle.
+
+**Step H6: Prompt Round 3 (Optimist Finalizes)**
+
+```
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="optimist",
+  message="Round 3: Finalize ${PHASE_DIR}/*-RESEARCH.md. Incorporate valid challenges and alternatives. Add a 'Dissenting Views / Risks & Alternatives' section summarizing the devil's advocate concerns and explorer insights. This is the final version."
+)
+```
+
+Wait for optimist to go idle.
+
+**Step H7: Clean up perspective notes**
+
+```bash
+rm -f "${PHASE_DIR}"/ADVOCATE-NOTES.md
+rm -f "${PHASE_DIR}"/EXPLORER-NOTES.md
+```
+
+**Step H8: Shutdown teammates**
+
+```
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="optimist",
+  message="shutdown"
+)
+
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="devil's-advocate",
+  message="shutdown"
+)
+
+SendMessage(
+  team_name="${TEAM_NAME}",
+  teammate_name="explorer",
+  message="shutdown"
+)
+```
+
+**Step H9: Clean up team**
+
+```
+TeamDelete(team_name="${TEAM_NAME}")
+```
+
+**Step H10: Continue to research complete handling**
+
+Display: `>> Research complete (hybrid mode -- 3-perspective debate)`
+
+Proceed to step 6.
+
+### Branch: Classic Research (Single Task)
+
+**If `USE_HYBRID=false` OR `FALLBACK_TO_CLASSIC=true`:**
+
+**If FALLBACK_TO_CLASSIC was triggered after TeamCreate succeeded:**
+```
+TeamDelete(team_name="${TEAM_NAME}")
+```
+
+**Classic research path (unchanged):**
+
 ```
 Task(
   prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + research_prompt,
