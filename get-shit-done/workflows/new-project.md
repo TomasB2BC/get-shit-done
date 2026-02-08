@@ -381,6 +381,370 @@ Check if this is greenfield or subsequent milestone:
 - If no "Validated" requirements in PROJECT.md → Greenfield (building from scratch)
 - If "Validated" requirements exist → Subsequent milestone (adding to existing app)
 
+**Detect orchestration mode:**
+
+Read config for hybrid mode detection using the canonical compound detection pattern:
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check (only when compound check passes)
+  AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "WARNING: orchestration=hybrid but Agent Teams not available or research not enabled"
+  echo "Falling back to classic mode (set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and agent_teams.research=true to enable)"
+fi
+```
+
+**If USE_HYBRID=true: Hybrid Research (Agent Teams)**
+
+Display hybrid indicator:
+```
+>> Using Agent Teams for collaborative research (hybrid mode)
+>> 2-round debate protocol: draft+broadcast, challenge+finalize
+
+>> Spawning 4 researchers as Agent Team...
+  >> Stack research (with debate)
+  >> Features research (with debate)
+  >> Architecture research (with debate)
+  >> Pitfalls research (with debate)
+```
+
+**Step H1: Create research team**
+
+```
+TeamCreate(
+  team_name="project-research",
+  description="Project research for [domain] - 4 researchers with 2-round debate"
+)
+```
+
+If TeamCreate fails, display warning and set FALLBACK_TO_CLASSIC=true:
+```
+[!] WARNING: Agent Teams team creation failed, falling back to classic mode
+```
+
+**Step H2: Spawn 4 researcher teammates**
+
+Spawn all 4 in parallel using Task with team_name and name parameters:
+
+```
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>project-research</team_name>
+<dimension>stack</dimension>
+
+<research_type>
+Project Research -- Stack dimension for [domain].
+</research_type>
+
+<milestone_context>
+[greenfield OR subsequent -- same logic as classic mode]
+
+Greenfield: Research the standard stack for building [domain] from scratch.
+Subsequent: Research what's needed to add [target features] to an existing [domain] app. Don't re-research the existing system.
+</milestone_context>
+
+<question>
+What's the standard 2025 stack for [domain]?
+</question>
+
+<project_context>
+[PROJECT.md summary - core value, constraints, what they're building]
+</project_context>
+
+<downstream_consumer>
+Your STACK.md feeds into roadmap creation. Be prescriptive:
+- Specific libraries with versions
+- Clear rationale for each choice
+- What NOT to use and why
+</downstream_consumer>
+
+<quality_gate>
+- [ ] Versions are current (verify with Context7/official docs, not training data)
+- [ ] Rationale explains WHY, not just WHAT
+- [ ] Confidence levels assigned to each recommendation
+</quality_gate>
+
+<output>
+Write to: .planning/research/STACK.md
+Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/STACK.md
+Do NOT commit -- orchestrator commits all files.
+</output>
+", team_name="project-research", name="stack-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Stack research with debate")
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>project-research</team_name>
+<dimension>features</dimension>
+
+<research_type>
+Project Research -- Features dimension for [domain].
+</research_type>
+
+<milestone_context>
+[greenfield OR subsequent -- same logic as classic mode]
+
+Greenfield: What features do [domain] products have? What's table stakes vs differentiating?
+Subsequent: How do [target features] typically work? What's expected behavior?
+</milestone_context>
+
+<question>
+What features do [domain] products have? What's table stakes vs differentiating?
+</question>
+
+<project_context>
+[PROJECT.md summary]
+</project_context>
+
+<downstream_consumer>
+Your FEATURES.md feeds into requirements definition. Categorize clearly:
+- Table stakes (must have or users leave)
+- Differentiators (competitive advantage)
+- Anti-features (things to deliberately NOT build)
+</downstream_consumer>
+
+<quality_gate>
+- [ ] Categories are clear (table stakes vs differentiators vs anti-features)
+- [ ] Complexity noted for each feature
+- [ ] Dependencies between features identified
+</quality_gate>
+
+<output>
+Write to: .planning/research/FEATURES.md
+Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/FEATURES.md
+Do NOT commit -- orchestrator commits all files.
+</output>
+", team_name="project-research", name="features-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Features research with debate")
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>project-research</team_name>
+<dimension>architecture</dimension>
+
+<research_type>
+Project Research -- Architecture dimension for [domain].
+</research_type>
+
+<milestone_context>
+[greenfield OR subsequent -- same logic as classic mode]
+
+Greenfield: How are [domain] systems typically structured? What are major components?
+Subsequent: How do [target features] integrate with existing [domain] architecture?
+</milestone_context>
+
+<question>
+How are [domain] systems typically structured? What are major components?
+</question>
+
+<project_context>
+[PROJECT.md summary]
+</project_context>
+
+<downstream_consumer>
+Your ARCHITECTURE.md informs phase structure in roadmap. Include:
+- Component boundaries (what talks to what)
+- Data flow (how information moves)
+- Suggested build order (dependencies between components)
+</downstream_consumer>
+
+<quality_gate>
+- [ ] Components clearly defined with boundaries
+- [ ] Data flow direction explicit
+- [ ] Build order implications noted
+</quality_gate>
+
+<output>
+Write to: .planning/research/ARCHITECTURE.md
+Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
+Do NOT commit -- orchestrator commits all files.
+</output>
+", team_name="project-research", name="architecture-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Architecture research with debate")
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>project-research</team_name>
+<dimension>pitfalls</dimension>
+
+<research_type>
+Project Research -- Pitfalls dimension for [domain].
+</research_type>
+
+<milestone_context>
+[greenfield OR subsequent -- same logic as classic mode]
+
+Greenfield: What do [domain] projects commonly get wrong? Critical mistakes?
+Subsequent: What are common mistakes when adding [target features] to [domain]?
+</milestone_context>
+
+<question>
+What do [domain] projects commonly get wrong? Critical mistakes?
+</question>
+
+<project_context>
+[PROJECT.md summary]
+</project_context>
+
+<downstream_consumer>
+Your PITFALLS.md prevents mistakes in roadmap/planning. For each pitfall:
+- Warning signs (how to detect early)
+- Prevention strategy (how to avoid)
+- Which phase should address it
+</downstream_consumer>
+
+<quality_gate>
+- [ ] Pitfalls are specific to this domain (not generic advice)
+- [ ] Prevention strategies are actionable
+- [ ] Phase mapping included where relevant
+</quality_gate>
+
+<output>
+Write to: .planning/research/PITFALLS.md
+Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/PITFALLS.md
+Do NOT commit -- orchestrator commits all files.
+</output>
+", team_name="project-research", name="pitfalls-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Pitfalls research with debate")
+```
+
+If fewer than 2 teammates spawn successfully, set FALLBACK_TO_CLASSIC=true. If 2-3 spawn, continue with available teammates and fill gaps later with classic Task.
+
+**Step H3: Wait for Round 1 completion**
+
+**IMPORTANT: The orchestrator MUST wait here. Do NOT start writing or modifying any research files.**
+
+After spawning, wait for all 4 teammates to complete Round 1. Idle notifications are delivered automatically as conversation turns when teammates stop after broadcasting. Wait until all 4 teammates have gone idle, then verify all 4 draft files exist:
+
+```bash
+ls .planning/research/STACK.md .planning/research/FEATURES.md .planning/research/ARCHITECTURE.md .planning/research/PITFALLS.md
+```
+
+**Partial failure handling:** If 2+ researchers succeeded (files exist), continue Round 2 for successful researchers only. After synthesis, fill gaps for missing dimensions using classic Task subagents. If 0-1 researchers succeeded, set FALLBACK_TO_CLASSIC=true and clean up team.
+
+**Step H4: Prompt Round 2**
+
+Send a message to each active teammate:
+
+```
+SendMessage(
+  type="message",
+  recipient="stack-researcher",
+  content="Round 1 complete. All teammates have broadcast their findings. Begin Round 2: Review your teammates' broadcasts. Send direct challenges (contradictions) or reinforcements (alignments) to specific teammates. Then revise and finalize STACK.md. Stop when your file is finalized.",
+  summary="Start Round 2 challenges"
+)
+
+SendMessage(
+  type="message",
+  recipient="features-researcher",
+  content="Round 1 complete. All teammates have broadcast their findings. Begin Round 2: Review your teammates' broadcasts. Send direct challenges (contradictions) or reinforcements (alignments) to specific teammates. Then revise and finalize FEATURES.md. Stop when your file is finalized.",
+  summary="Start Round 2 challenges"
+)
+
+SendMessage(
+  type="message",
+  recipient="architecture-researcher",
+  content="Round 1 complete. All teammates have broadcast their findings. Begin Round 2: Review your teammates' broadcasts. Send direct challenges (contradictions) or reinforcements (alignments) to specific teammates. Then revise and finalize ARCHITECTURE.md. Stop when your file is finalized.",
+  summary="Start Round 2 challenges"
+)
+
+SendMessage(
+  type="message",
+  recipient="pitfalls-researcher",
+  content="Round 1 complete. All teammates have broadcast their findings. Begin Round 2: Review your teammates' broadcasts. Send direct challenges (contradictions) or reinforcements (alignments) to specific teammates. Then revise and finalize PITFALLS.md. Stop when your file is finalized.",
+  summary="Start Round 2 challenges"
+)
+```
+
+**Step H5: Wait for Round 2 completion**
+
+**IMPORTANT: Wait here for all active teammates to go idle again.** Idle notifications are delivered automatically.
+
+**Step H6: Shutdown teammates**
+
+Send shutdown requests to all active teammates:
+
+```
+SendMessage(
+  type="shutdown_request",
+  recipient="stack-researcher",
+  content="Research complete. Thank you for your work."
+)
+
+SendMessage(
+  type="shutdown_request",
+  recipient="features-researcher",
+  content="Research complete. Thank you for your work."
+)
+
+SendMessage(
+  type="shutdown_request",
+  recipient="architecture-researcher",
+  content="Research complete. Thank you for your work."
+)
+
+SendMessage(
+  type="shutdown_request",
+  recipient="pitfalls-researcher",
+  content="Research complete. Thank you for your work."
+)
+```
+
+Wait for shutdown confirmations.
+
+**Step H7: Synthesize SUMMARY.md**
+
+**WARNING: The orchestrator writes ONLY SUMMARY.md. Do NOT write or modify STACK.md, FEATURES.md, ARCHITECTURE.md, or PITFALLS.md.**
+
+Read all 4 final files and write SUMMARY.md directly:
+
+1. Read .planning/research/STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
+2. Check for remaining contradictions between files
+3. Note confidence levels based on debate outcomes
+4. Write .planning/research/SUMMARY.md using template at C:\Users\tomas\.claude/get-shit-done/templates/research-project/SUMMARY.md
+5. Include in SUMMARY.md metadata: "Research mode: hybrid (Agent Teams with 2-round debate)"
+
+**Step H8: Clean up team**
+
+```
+TeamDelete()
+```
+
+**Step H9: Commit and continue**
+
+```bash
+node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: complete project research (hybrid mode)" --files .planning/research/STACK.md .planning/research/FEATURES.md .planning/research/ARCHITECTURE.md .planning/research/PITFALLS.md .planning/research/SUMMARY.md
+```
+
+Continue to research complete banner.
+
+**If USE_HYBRID=false OR FALLBACK_TO_CLASSIC=true: Classic Research (existing code)**
+
+**If FALLBACK_TO_CLASSIC was set after TeamCreate succeeded, clean up team first:**
+```
+TeamDelete()
+```
+
+If FALLBACK_TO_CLASSIC was triggered, display:
+```
+[!] Hybrid mode failed, using classic research mode
+```
+
 Display spawning indicator:
 ```
 ◆ Spawning 4 researchers in parallel...
