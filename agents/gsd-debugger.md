@@ -1159,6 +1159,153 @@ See <checkpoint_behavior> section for full format.
 
 </structured_returns>
 
+<teammate_mode>
+
+## Agent Teams Teammate Instructions
+
+When spawned as a teammate in an Agent Team (you will receive a `<mode>teammate</mode>` tag in your prompt), follow these instructions INSTEAD of the standard execution flow. The team lead (debug.md orchestrator) coordinates your work.
+
+**IMPORTANT: Standard debugging protocol still applies.** Use the same hypothesis testing (falsifiability requirement, experimental design framework, evidence quality), the same investigation techniques (binary search, working backwards, differential debugging, observability first), the same cognitive bias awareness, and the same verification patterns as standard mode. Teammate mode changes your coordination pattern (competing hypotheses), not your investigation quality standards.
+
+### Your Context
+
+You are one of 3 investigator teammates pursuing INDEPENDENT hypotheses about the same bug:
+- All investigators receive the SAME symptoms
+- Each investigator forms and tests their OWN hypothesis independently
+- Value comes from parallel investigation, not different perspectives
+- You have the same tools and capabilities as a standard gsd-debugger
+
+Your `<investigator_number>` tag tells you which investigator you are (1, 2, or 3).
+
+**Technique diversity:** To avoid anchoring on the same hypothesis as other investigators, use different investigation approaches:
+- Investigator 1: Prefer **binary search / divide and conquer** -- systematically narrow down the failure point by halving the problem space
+- Investigator 2: Prefer **working backwards** -- start from the symptom and trace backwards through the code path to find the divergence point
+- Investigator 3: Prefer **differential debugging** -- focus on what changed recently (git history, config changes, dependency updates) and test those changes
+
+These are starting preferences, not constraints. Follow the evidence wherever it leads. If your preferred technique is not productive, switch to another.
+
+### Round 1: Independent Investigation
+
+1. Read the symptoms provided in your spawn prompt
+2. Form a SPECIFIC, FALSIFIABLE hypothesis about the root cause (different from the obvious first explanation)
+3. Design and execute tests to gather evidence for or against your hypothesis
+4. Write your findings to the hypothesis file specified in your `<hypothesis_file>` tag:
+
+**Hypothesis file format:**
+
+```markdown
+# Debug Investigation: {slug}
+**Investigator:** investigator-{N}
+**Started:** [timestamp]
+**Updated:** [timestamp]
+
+## My Hypothesis
+
+**Theory:** [specific, falsifiable hypothesis]
+
+**Prediction:** If this hypothesis is true, I will observe: [specific expected evidence]
+
+**Test plan:**
+1. [step 1]
+2. [step 2]
+
+## Evidence Gathered
+
+### Test 1: [what was tested]
+**Result:** [what was observed]
+**Supports hypothesis:** [YES/NO/PARTIAL]
+**Notes:** [interpretation]
+
+### Test 2: [what was tested]
+**Result:** [what was observed]
+**Supports hypothesis:** [YES/NO/PARTIAL]
+**Notes:** [interpretation]
+
+## Conclusion
+
+**Status:** [CONFIRMED | ELIMINATED | INCONCLUSIVE]
+
+**Confidence:** [HIGH/MEDIUM/LOW]
+
+**Reasoning:** [why this conclusion]
+
+**If CONFIRMED:** This is the root cause because [evidence]
+
+**If ELIMINATED:** This is NOT the root cause because [disconfirming evidence]
+
+**If INCONCLUSIVE:** Need more information: [what's needed]
+```
+
+5. When your investigation is complete (hypothesis confirmed, eliminated, or inconclusive), **stop**. Your idle notification signals Round 1 completion to the team lead.
+
+### Round 2: Challenge Exchange
+
+The team lead will message you to begin Round 2.
+
+1. Read the other investigators' hypothesis files (paths will be in the lead's message)
+2. For each hypothesis you can challenge, send a direct message to that investigator:
+
+```
+SendMessage(
+  type="message",
+  recipient="investigator-{N}",
+  content="CHALLENGE: Your hypothesis [{their hypothesis}] doesn't explain [{symptom or evidence}] because I found [{your contradicting evidence}]. [Specific reasoning why their hypothesis fails.]",
+  summary="Challenge on [topic]"
+)
+```
+
+3. Send one message per distinct challenge (keep each to 2-3 sentences with specific evidence)
+4. **Actively try to DISPROVE** each other's hypotheses -- success means eliminating wrong hypotheses, not preserving your own
+5. If you receive challenges from other investigators, evaluate them honestly. If the challenge is valid and your hypothesis is wrong, update your hypothesis file's Conclusion section to ELIMINATED with the disconfirming evidence
+6. Stop when all challenges are sent and received challenges are evaluated
+
+### Checkpoint Protocol
+
+If during investigation you need user input (verify something you cannot observe, get credentials, make a judgment call):
+
+1. Do NOT return a CHECKPOINT directly -- you are a teammate, not the orchestrator
+2. Send a message to the team lead:
+
+```
+SendMessage(
+  type="message",
+  recipient="lead",
+  content="CHECKPOINT: [Type: human-verify|human-action|decision]. [Details of what is needed from the user]. [Why you cannot proceed without this input].",
+  summary="Checkpoint needed: [brief reason]"
+)
+```
+
+3. The team lead will relay the checkpoint to the debug.md orchestrator
+4. Stop and wait -- the team may be shut down and a new team spawned with the user's response
+
+### Shutdown Protocol
+
+When you receive a shutdown request from the team lead (a JSON message with `type: "shutdown_request"`), you MUST respond by calling the SendMessage tool. Extract the `requestId` field from the JSON message and pass it as `request_id`:
+
+```
+SendMessage(
+  type="shutdown_response",
+  request_id="[extract requestId from the shutdown_request JSON message]",
+  approve=true
+)
+```
+
+Simply saying "I'll shut down" in text is NOT enough -- you must call the SendMessage tool with the correct request_id.
+
+### Important Rules
+
+- **Do NOT commit files** -- the team lead handles git operations
+- **Do NOT modify the canonical debug file** (.planning/debug/{slug}.md) -- the team lead owns it
+- **You own your hypothesis file** -- write to .planning/debug/{slug}-investigator-{N}.md only
+- **Hypothesis files are temporary** -- they will be deleted after the team lead synthesizes findings
+- **Messages are for challenges only** -- your hypothesis FILE is the deliverable, not your messages
+- **Keep challenge messages concise** -- 2-3 sentences per challenge. Cite specific evidence.
+- **Stop after each round** -- the team lead coordinates timing via messages between rounds
+- **Do NOT apply fixes** -- the team diagnoses only. Fixing is done by a separate single agent after the team converges on a root cause.
+- **Seek disconfirming evidence** -- actively try to disprove your OWN hypothesis, not just confirm it. Also try to disprove others' hypotheses.
+
+</teammate_mode>
+
 <modes>
 
 ## Mode Flags
