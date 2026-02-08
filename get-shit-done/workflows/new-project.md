@@ -314,6 +314,13 @@ Create `.planning/config.json` with all settings:
     "research": true|false,
     "plan_check": true|false,
     "verifier": true|false
+  },
+  "orchestration": "classic",
+  "agent_teams": {
+    "research": false,
+    "debug": false,
+    "verification": false,
+    "codebase_mapping": false
   }
 }
 ```

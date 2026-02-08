@@ -27,6 +27,11 @@ Parse current values (default to `true` if not present):
 - `workflow.verifier` — spawn verifier during execute-phase
 - `model_profile` — which model each agent uses (default: `balanced`)
 - `git.branching_strategy` — branching approach (default: `"none"`)
+- `orchestration` — orchestration mode (default: `"classic"`)
+- `agent_teams.research` — use Agent Teams for research (default: `false`)
+- `agent_teams.debug` — use Agent Teams for debugging (default: `false`)
+- `agent_teams.verification` — use Agent Teams for verification (default: `false`)
+- `agent_teams.codebase_mapping` — use Agent Teams for codebase mapping (default: `false`)
 </step>
 
 <step name="present_settings">
@@ -80,6 +85,51 @@ AskUserQuestion([
       { label: "Per Phase", description: "Create branch for each phase (gsd/phase-{N}-{name})" },
       { label: "Per Milestone", description: "Create branch for entire milestone (gsd/{version}-{name})" }
     ]
+  },
+  {
+    question: "Orchestration mode?",
+    header: "Orchestration",
+    multiSelect: false,
+    options: [
+      { label: "Classic (Recommended)", description: "Use Task subagents for all operations" },
+      { label: "Hybrid (Experimental)", description: "Use Agent Teams where beneficial (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for research?",
+    header: "AT: Research",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Use classic Task subagents for research" },
+      { label: "Yes", description: "Use Agent Teams with debate protocol for research" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for debugging?",
+    header: "AT: Debug",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Use classic Task subagent for debugging" },
+      { label: "Yes", description: "Use Agent Teams with competing hypotheses for debugging" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for verification?",
+    header: "AT: Verify",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Use classic Task subagent for verification" },
+      { label: "Yes", description: "Use Agent Teams with adversarial validation for verification" }
+    ]
+  },
+  {
+    question: "Use Agent Teams for codebase mapping?",
+    header: "AT: Mapping",
+    multiSelect: false,
+    options: [
+      { label: "No", description: "Use classic Task subagents for codebase mapping" },
+      { label: "Yes", description: "Use Agent Teams with collaborative analysis for codebase mapping" }
+    ]
   }
 ])
 ```
@@ -99,6 +149,13 @@ Merge new settings into existing config.json:
   },
   "git": {
     "branching_strategy": "none" | "phase" | "milestone"
+  },
+  "orchestration": "classic" | "hybrid",
+  "agent_teams": {
+    "research": true/false,
+    "debug": true/false,
+    "verification": true/false,
+    "codebase_mapping": true/false
   }
 }
 ```
@@ -121,6 +178,14 @@ Display:
 | Plan Checker         | {On/Off} |
 | Execution Verifier   | {On/Off} |
 | Git Branching        | {None/Per Phase/Per Milestone} |
+| Orchestration        | {Classic/Hybrid} |
+| AT: Research         | {On/Off} |
+| AT: Debug            | {On/Off} |
+| AT: Verification     | {On/Off} |
+| AT: Mapping          | {On/Off} |
+
+Agent Teams settings only take effect when Orchestration is Hybrid AND
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable is set.
 
 These settings apply to future /gsd:plan-phase and /gsd:execute-phase runs.
 
@@ -136,7 +201,7 @@ Quick commands:
 
 <success_criteria>
 - [ ] Current config read
-- [ ] User presented with 5 settings (profile + 3 workflow toggles + git branching)
+- [ ] User presented with 10 settings (profile + 3 workflow toggles + git branching + orchestration + 4 agent teams toggles)
 - [ ] Config updated with model_profile, workflow, and git sections
 - [ ] Changes confirmed to user
 </success_criteria>

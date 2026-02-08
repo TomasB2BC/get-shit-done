@@ -33,9 +33,12 @@ Read current config:
 cat .planning/config.json
 ```
 
+Read ALL current field values from the existing config. Write the complete config back with ONLY `model_profile` changed. All other fields (`mode`, `depth`, `parallelization`, `commit_docs`, `workflow`, `git`, `orchestration`, `agent_teams`) must be preserved exactly as they were.
+
 Update `model_profile` field:
 ```json
 {
+  ...all_existing_fields_preserved,
   "model_profile": "$ARGUMENTS.profile"
 }
 ```
