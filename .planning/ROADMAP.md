@@ -102,17 +102,17 @@ Plans:
 **Requirements:** MAP-01, MAP-02, MAP-03, AGT-05
 **Plans:** 2 plans
 
-**Status:** In progress (2026-02-08)
+**Status:** Complete (2026-02-08)
 
 Plans:
 - [x] 06-01-PLAN.md -- Add teammate-mode instructions to gsd-codebase-mapper.md (AGT-05)
-- [ ] 06-02-PLAN.md -- Add hybrid branch to map-codebase.md spawn_agents step (MAP-01, MAP-02, MAP-03)
+- [x] 06-02-PLAN.md -- Add hybrid branch to map-codebase.md spawn_agents step (MAP-01, MAP-02, MAP-03)
 
 **Success Criteria:**
-1. map-codebase.md Step 3 spawns 4 collaborative mapper teammates
-2. Mappers cross-reference findings (tech informs quality, arch informs concerns)
-3. All 7 codebase documents produced in same format
-4. Classic mode still spawns 4 Task mappers
+1. map-codebase.md spawn_agents step spawns 4 collaborative mapper teammates [DONE]
+2. Mappers cross-reference findings (tech informs quality, arch informs concerns) [DONE]
+3. All 7 codebase documents produced in same format [DONE]
+4. Classic mode still spawns 4 Task mappers [DONE]
 
 ### Phase 7: Fallback and Integration Testing
 **Goal:** Validate classic mode unbroken, hybrid fallback works, output contracts match
@@ -180,4 +180,4 @@ more viable. Cost tradeoff: fewer sessions needed, higher per-session cost.
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-08 after Phase 5 execution complete*
+*Last updated: 2026-02-08 after Phase 6 execution complete*
