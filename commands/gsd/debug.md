@@ -57,6 +57,495 @@ After all gathered, confirm ready to investigate.
 
 ## 3. Spawn gsd-debugger Agent
 
+### Detect Hybrid Mode
+
+Use canonical compound detection pattern:
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check
+  AGENT_TEAMS_DEBUG=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"debug"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_DEBUG" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "[!] WARNING: orchestration=hybrid but Agent Teams not available or debug not enabled"
+  echo "[!] Falling back to classic mode"
+fi
+```
+
+### Branch: Hybrid Mode (Agent Team)
+
+If `USE_HYBRID=true`, run competing-hypotheses protocol with 3 investigator teammates:
+
+**H1. Create Agent Team**
+
+```bash
+TEAM_NAME="debug-${slug}"
+TeamCreate(team_name="${TEAM_NAME}", description="Debug investigation team for ${slug}")
+```
+
+If TeamCreate fails, set `FALLBACK_TO_CLASSIC=true` and skip to classic branch.
+
+**H2. Create Canonical Debug File**
+
+```bash
+mkdir -p .planning/debug
+cat > .planning/debug/${slug}.md <<'EOF'
+---
+status: investigating
+issue: {slug}
+created: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+---
+
+# Debug Investigation: {slug}
+
+## Current Focus
+
+Spawning 3-investigator team for parallel hypothesis testing.
+
+## Symptoms
+
+**Expected:** {expected}
+**Actual:** {actual}
+**Errors:** {errors}
+**Reproduction:** {reproduction}
+**Timeline:** {timeline}
+
+## Eliminated
+
+(Investigators will update)
+
+## Evidence
+
+(Investigators will update)
+
+## Resolution
+
+(Pending investigation)
+EOF
+```
+
+**H3. Spawn 3 Investigator Teammates**
+
+Each investigator gets technique-specific guidance to avoid anchoring:
+
+```markdown
+# Investigator 1 prompt (Binary Search)
+<objective>
+Investigate issue: {slug}
+
+**Your role:** Investigator 1 of 3 (Binary Search technique)
+</objective>
+
+<symptoms>
+expected: {expected}
+actual: {actual}
+errors: {errors}
+reproduction: {reproduction}
+timeline: {timeline}
+</symptoms>
+
+<mode>
+teammate
+team_name: ${TEAM_NAME}
+investigator_number: 1
+symptoms_prefilled: true
+goal: find_root_cause_only
+technique: binary_search
+</mode>
+
+<technique_guidance>
+Use binary search debugging: isolate the problem space by testing midpoints.
+1. Identify the working/broken boundary
+2. Test intermediate states to narrow the range
+3. Repeat until you pinpoint the exact failure point
+</technique_guidance>
+
+<hypothesis_file>
+Write your hypothesis to: .planning/debug/${slug}-investigator-1.md
+
+Format:
+---
+investigator: 1
+technique: binary_search
+status: investigating
+---
+
+## Hypothesis
+
+[Your hypothesis about root cause]
+
+## Evidence
+
+[Facts supporting hypothesis]
+
+## Tests
+
+[Tests performed]
+
+## Confidence
+
+[low/medium/high]
+</hypothesis_file>
+```
+
+```
+Task(
+  prompt=investigator_1_prompt,
+  subagent_type="gsd-debugger",
+  model="{debugger_model}",
+  team_name="${TEAM_NAME}",
+  name="investigator-1",
+  description="Investigator 1: Binary Search"
+)
+```
+
+```markdown
+# Investigator 2 prompt (Working Backwards)
+<objective>
+Investigate issue: {slug}
+
+**Your role:** Investigator 2 of 3 (Working Backwards technique)
+</objective>
+
+<symptoms>
+expected: {expected}
+actual: {actual}
+errors: {errors}
+reproduction: {reproduction}
+timeline: {timeline}
+</symptoms>
+
+<mode>
+teammate
+team_name: ${TEAM_NAME}
+investigator_number: 2
+symptoms_prefilled: true
+goal: find_root_cause_only
+technique: working_backwards
+</mode>
+
+<technique_guidance>
+Work backwards from the symptom to the cause:
+1. Start with the observable failure
+2. Trace back through the call stack/data flow
+3. Ask "what could cause this?" at each step
+4. Follow the chain until you reach the root
+</technique_guidance>
+
+<hypothesis_file>
+Write your hypothesis to: .planning/debug/${slug}-investigator-2.md
+
+Format:
+---
+investigator: 2
+technique: working_backwards
+status: investigating
+---
+
+## Hypothesis
+
+[Your hypothesis about root cause]
+
+## Evidence
+
+[Facts supporting hypothesis]
+
+## Tests
+
+[Tests performed]
+
+## Confidence
+
+[low/medium/high]
+</hypothesis_file>
+```
+
+```
+Task(
+  prompt=investigator_2_prompt,
+  subagent_type="gsd-debugger",
+  model="{debugger_model}",
+  team_name="${TEAM_NAME}",
+  name="investigator-2",
+  description="Investigator 2: Working Backwards"
+)
+```
+
+```markdown
+# Investigator 3 prompt (Differential Debugging)
+<objective>
+Investigate issue: {slug}
+
+**Your role:** Investigator 3 of 3 (Differential Debugging technique)
+</objective>
+
+<symptoms>
+expected: {expected}
+actual: {actual}
+errors: {errors}
+reproduction: {reproduction}
+timeline: {timeline}
+</symptoms>
+
+<mode>
+teammate
+team_name: ${TEAM_NAME}
+investigator_number: 3
+symptoms_prefilled: true
+goal: find_root_cause_only
+technique: differential_debugging
+</mode>
+
+<technique_guidance>
+Use differential debugging: compare working vs broken states:
+1. Find a minimal difference between working and broken
+2. Identify what changed (code, data, environment)
+3. Test if reverting the change fixes the issue
+4. Isolate the specific change causing the problem
+</technique_guidance>
+
+<hypothesis_file>
+Write your hypothesis to: .planning/debug/${slug}-investigator-3.md
+
+Format:
+---
+investigator: 3
+technique: differential_debugging
+status: investigating
+---
+
+## Hypothesis
+
+[Your hypothesis about root cause]
+
+## Evidence
+
+[Facts supporting hypothesis]
+
+## Tests
+
+[Tests performed]
+
+## Confidence
+
+[low/medium/high]
+</hypothesis_file>
+```
+
+```
+Task(
+  prompt=investigator_3_prompt,
+  subagent_type="gsd-debugger",
+  model="{debugger_model}",
+  team_name="${TEAM_NAME}",
+  name="investigator-3",
+  description="Investigator 3: Differential Debugging"
+)
+```
+
+If 0-1 investigators succeed, set `FALLBACK_TO_CLASSIC=true`, call TeamDelete if team was created, skip to classic branch.
+
+**H4. Round 1 Wait**
+
+Wait for all 3 investigators to report idle:
+
+```
+Wait for 3 idle notifications
+```
+
+After idle, verify hypothesis files exist:
+
+```bash
+ls .planning/debug/${slug}-investigator-{1,2,3}.md 2>/dev/null | wc -l
+```
+
+If fewer than 2 files exist, set `FALLBACK_TO_CLASSIC=true`, call TeamDelete, skip to classic branch.
+
+Check if any investigator messaged with CHECKPOINT:
+
+```bash
+# Check last message from each investigator
+# If any starts with "## CHECKPOINT", return CHECKPOINT REACHED to Step 4
+```
+
+**H5. Round 2 Challenge**
+
+Send peer-to-peer challenge instructions to each investigator:
+
+```markdown
+# Message to investigator-1
+Round 2: Challenge other hypotheses.
+
+Your peers' findings are in:
+- .planning/debug/${slug}-investigator-2.md (working backwards)
+- .planning/debug/${slug}-investigator-3.md (differential)
+
+TASK: Send CHALLENGE messages to investigators 2 and 3:
+
+1. Read their hypothesis files
+2. Identify weaknesses, missing tests, or alternative explanations
+3. Use SendMessage(type="message", recipient="investigator-2", content="CHALLENGE: ...") to send your critique to investigator 2
+4. Use SendMessage(type="message", recipient="investigator-3", content="CHALLENGE: ...") to send your critique to investigator 3
+5. Wait for incoming challenges from them
+6. Update your hypothesis file with responses to their challenges
+7. Report final confidence level (low/medium/high)
+
+DO NOT update other investigators' files. Use SendMessage for peer-to-peer communication.
+```
+
+```
+SendMessage(
+  type="message",
+  recipient="investigator-1",
+  content=round2_message_inv1
+)
+```
+
+```markdown
+# Message to investigator-2
+Round 2: Challenge other hypotheses.
+
+Your peers' findings are in:
+- .planning/debug/${slug}-investigator-1.md (binary search)
+- .planning/debug/${slug}-investigator-3.md (differential)
+
+TASK: Send CHALLENGE messages to investigators 1 and 3:
+
+1. Read their hypothesis files
+2. Identify weaknesses, missing tests, or alternative explanations
+3. Use SendMessage(type="message", recipient="investigator-1", content="CHALLENGE: ...") to send your critique to investigator 1
+4. Use SendMessage(type="message", recipient="investigator-3", content="CHALLENGE: ...") to send your critique to investigator 3
+5. Wait for incoming challenges from them
+6. Update your hypothesis file with responses to their challenges
+7. Report final confidence level (low/medium/high)
+
+DO NOT update other investigators' files. Use SendMessage for peer-to-peer communication.
+```
+
+```
+SendMessage(
+  type="message",
+  recipient="investigator-2",
+  content=round2_message_inv2
+)
+```
+
+```markdown
+# Message to investigator-3
+Round 2: Challenge other hypotheses.
+
+Your peers' findings are in:
+- .planning/debug/${slug}-investigator-1.md (binary search)
+- .planning/debug/${slug}-investigator-2.md (working backwards)
+
+TASK: Send CHALLENGE messages to investigators 1 and 2:
+
+1. Read their hypothesis files
+2. Identify weaknesses, missing tests, or alternative explanations
+3. Use SendMessage(type="message", recipient="investigator-1", content="CHALLENGE: ...") to send your critique to investigator 1
+4. Use SendMessage(type="message", recipient="investigator-2", content="CHALLENGE: ...") to send your critique to investigator 2
+5. Wait for incoming challenges from them
+6. Update your hypothesis file with responses to their challenges
+7. Report final confidence level (low/medium/high)
+
+DO NOT update other investigators' files. Use SendMessage for peer-to-peer communication.
+```
+
+```
+SendMessage(
+  type="message",
+  recipient="investigator-3",
+  content=round2_message_inv3
+)
+```
+
+**H6. Round 2 Wait**
+
+Wait for all 3 investigators to finish challenging and report idle:
+
+```
+Wait for 3 idle notifications
+```
+
+**H7. Lead Convergence and Synthesis**
+
+Team lead (this orchestrator) reads all 3 hypothesis files and synthesizes findings:
+
+```bash
+# Read hypothesis files
+cat .planning/debug/${slug}-investigator-1.md
+cat .planning/debug/${slug}-investigator-2.md
+cat .planning/debug/${slug}-investigator-3.md
+```
+
+Convergence logic:
+
+1. **If all 3 agree on same root cause with high confidence:** ROOT CAUSE FOUND
+2. **If 2+ agree on same root cause:** ROOT CAUSE FOUND (with note about dissent)
+3. **If all 3 have different hypotheses but collectively eliminated key possibilities:** Update Eliminated section, continue investigation (INVESTIGATION INCONCLUSIVE)
+4. **If any investigator needs checkpoint:** CHECKPOINT REACHED
+
+Synthesize into canonical debug file:
+
+```bash
+# Update .planning/debug/${slug}.md with:
+# - Status: root_cause_found | inconclusive | checkpoint_needed
+# - Eliminated: [combined eliminations from all 3]
+# - Evidence: [combined evidence supporting conclusion]
+# - Resolution: [synthesis of agreed-upon root cause OR summary of disagreement]
+```
+
+**H8. Cleanup Hypothesis Files**
+
+Delete temporary hypothesis files:
+
+```bash
+rm .planning/debug/${slug}-investigator-1.md
+rm .planning/debug/${slug}-investigator-2.md
+rm .planning/debug/${slug}-investigator-3.md
+```
+
+**H9. Shutdown Investigators**
+
+Send shutdown requests to all 3:
+
+```bash
+SendMessage(type="shutdown_request", recipient="investigator-1", content="Investigation complete. Thank you.")
+SendMessage(type="shutdown_request", recipient="investigator-2", content="Investigation complete. Thank you.")
+SendMessage(type="shutdown_request", recipient="investigator-3", content="Investigation complete. Thank you.")
+```
+
+**H10. Delete Team**
+
+```bash
+TeamDelete(team_name="${TEAM_NAME}")
+```
+
+**H11. Return Results**
+
+Return to Step 4 with structured format matching classic mode:
+
+- If root cause found: `## ROOT CAUSE FOUND` (includes evidence summary)
+- If checkpoint needed: `## CHECKPOINT REACHED` (includes checkpoint details)
+- If inconclusive: `## INVESTIGATION INCONCLUSIVE` (includes eliminated possibilities)
+
+### Branch: Classic Mode (Single Debugger)
+
+If `USE_HYBRID=false` OR `FALLBACK_TO_CLASSIC=true`, use single-agent investigation:
+
 Fill prompt and spawn:
 
 ```markdown
