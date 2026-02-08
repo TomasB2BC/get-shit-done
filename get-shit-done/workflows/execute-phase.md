@@ -288,6 +288,313 @@ After all waves:
 <step name="verify_phase_goal">
 Verify phase achieved its GOAL, not just completed tasks.
 
+**Detect orchestration mode:**
+
+Read config for hybrid mode detection using the canonical compound detection pattern:
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check
+  AGENT_TEAMS_VERIFICATION=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"verification"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_VERIFICATION" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "[!] WARNING: orchestration=hybrid but Agent Teams not available or verification not enabled"
+  echo "[!] Falling back to classic mode"
+fi
+```
+
+**If USE_HYBRID=true: Hybrid Verification (Agent Teams -- Adversarial Team)**
+
+Display hybrid indicator:
+```
+>> Using Agent Teams for verification (hybrid mode)
+>> Adversarial protocol: validator + breaker + reviewer
+```
+
+**Step V1: Create verification team**
+
+```
+TeamCreate(
+  team_name="phase-${PADDED_PHASE}-verification",
+  description="Phase ${PHASE} verification -- adversarial team (validator, breaker, reviewer)"
+)
+```
+
+If TeamCreate fails, display warning and set FALLBACK_TO_CLASSIC=true:
+```
+[!] WARNING: Agent Teams team creation failed, falling back to classic mode
+```
+
+**Step V2: Gather verification context**
+
+Before spawning teammates, prepare the context they need:
+
+```bash
+# Collect must-haves from all PLAN.md files in this phase
+MUST_HAVES=""
+for plan in "$PHASE_DIR"/*-PLAN.md; do
+  plan_must_haves=$(sed -n '/^must_haves:/,/^---$/p' "$plan" 2>/dev/null)
+  MUST_HAVES="${MUST_HAVES}\n\n## From $(basename $plan):\n${plan_must_haves}"
+done
+
+# Get phase goal from ROADMAP.md
+GOAL=$(grep -A2 "Phase ${PHASE_NUM}" .planning/ROADMAP.md 2>/dev/null | grep "Goal:" | sed 's/.*Goal:\*\* //')
+
+# List all SUMMARY.md files
+SUMMARIES=$(ls "$PHASE_DIR"/*-SUMMARY.md 2>/dev/null)
+
+# Get padded phase number for file naming
+PADDED_PHASE=$(printf "%02d" "$PHASE_NUM")
+```
+
+**Step V3: Spawn 3 verification teammates**
+
+Spawn all 3 in parallel using Task with team_name and name parameters. The {PHASE_DIR}, {GOAL}, {MUST_HAVES}, {PADDED_PHASE}, and {VERIFIER_MODEL} are already resolved.
+
+```
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>phase-${PADDED_PHASE}-verification</team_name>
+<role>validator</role>
+
+<objective>
+Verify phase ${PHASE_NUM} goal achievement.
+Focus: Positive verification -- check must-haves are met, artifacts exist and are wired correctly.
+Apply 3-level checks (exists, substantive, wired) to all artifacts.
+</objective>
+
+<context>
+Phase directory: ${PHASE_DIR}
+Phase goal: ${GOAL}
+
+Must-haves from plans:
+${MUST_HAVES}
+
+SUMMARY files to cross-reference:
+${SUMMARIES}
+</context>
+
+<findings_file>
+Write to: ${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md
+</findings_file>",
+  subagent_type="general-purpose",
+  model="${VERIFIER_MODEL}",
+  description="Verify Phase ${PHASE_NUM} (validator role)",
+  team_name="phase-${PADDED_PHASE}-verification",
+  name="validator"
+)
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>phase-${PADDED_PHASE}-verification</team_name>
+<role>breaker</role>
+
+<objective>
+Verify phase ${PHASE_NUM} goal achievement.
+Focus: Adversarial -- actively hunt for stubs, broken wiring, placeholder implementations, TODO comments, empty handlers, orphaned files.
+Prioritize key links first (highest impact), then systematic file scan.
+Be aggressive -- false positives are acceptable, false negatives are not.
+</objective>
+
+<context>
+Phase directory: ${PHASE_DIR}
+Phase goal: ${GOAL}
+
+Must-haves from plans:
+${MUST_HAVES}
+
+SUMMARY files to cross-reference:
+${SUMMARIES}
+</context>
+
+<findings_file>
+Write to: ${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md
+</findings_file>",
+  subagent_type="general-purpose",
+  model="${VERIFIER_MODEL}",
+  description="Verify Phase ${PHASE_NUM} (breaker role)",
+  team_name="phase-${PADDED_PHASE}-verification",
+  name="breaker"
+)
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>phase-${PADDED_PHASE}-verification</team_name>
+<role>reviewer</role>
+
+<objective>
+Verify phase ${PHASE_NUM} goal achievement.
+Focus: Completeness -- check requirements coverage, scan for anti-patterns, identify human verification needs.
+Read all PLAN.md and SUMMARY.md files to verify planned work was actually executed.
+Validate that SUMMARY.md claims match actual codebase state.
+</objective>
+
+<context>
+Phase directory: ${PHASE_DIR}
+Phase goal: ${GOAL}
+
+Must-haves from plans:
+${MUST_HAVES}
+
+SUMMARY files to cross-reference:
+${SUMMARIES}
+
+Requirements file: .planning/REQUIREMENTS.md
+</context>
+
+<findings_file>
+Write to: ${PHASE_DIR}/${PADDED_PHASE}-REVIEWER-FINDINGS.md
+</findings_file>",
+  subagent_type="general-purpose",
+  model="${VERIFIER_MODEL}",
+  description="Verify Phase ${PHASE_NUM} (reviewer role)",
+  team_name="phase-${PADDED_PHASE}-verification",
+  name="reviewer"
+)
+```
+
+If any teammate fails to spawn, log warning. If fewer than 2 teammates spawn successfully (0-1 succeed), set FALLBACK_TO_CLASSIC=true. If 2 spawn, continue with available teammates.
+
+**Step V4: Wait for Round 1 completion**
+
+**IMPORTANT: The orchestrator MUST wait here. Do NOT start writing or modifying any files.** Idle notifications are delivered automatically. Do NOT proceed to Round 2 until all spawned teammates have gone idle.
+
+After all teammates go idle, verify findings files exist:
+
+```bash
+ls "${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md"
+ls "${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md"
+ls "${PHASE_DIR}/${PADDED_PHASE}-REVIEWER-FINDINGS.md"
+```
+
+If zero findings files exist, set FALLBACK_TO_CLASSIC=true. If 1-2 exist, continue with available teammates.
+
+**Step V5: Prompt Round 2 (Challenge Exchange)**
+
+Send messages to each teammate to begin Round 2. Each message tells the teammate to read the OTHER teammates' findings files and send role-appropriate challenges:
+
+```
+SendMessage(
+  type="message",
+  recipient="validator",
+  content="Round 2: Read the breaker's findings at ${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md and the reviewer's findings at ${PHASE_DIR}/${PADDED_PHASE}-REVIEWER-FINDINGS.md. Respond to any challenges from breaker about items you marked as VERIFIED. If breaker's evidence is valid, update your findings file. Also address any completeness gaps from reviewer. Stop when all challenges are evaluated.",
+  summary="Start Round 2 defense"
+)
+
+SendMessage(
+  type="message",
+  recipient="breaker",
+  content="Round 2: Read the validator's findings at ${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md and the reviewer's findings at ${PHASE_DIR}/${PADDED_PHASE}-REVIEWER-FINDINGS.md. For each item validator marked as VERIFIED, check for evidence that it should fail. Send CHALLENGE messages to validator: SendMessage(type='message', recipient='validator', content='CHALLENGE: You marked [X] as VERIFIED, but I found [issue] in [file:line]. Evidence: [details]', summary='Challenge on [topic]'). Also review reviewer's completeness gaps. Stop when all challenges sent.",
+  summary="Start Round 2 challenges"
+)
+
+SendMessage(
+  type="message",
+  recipient="reviewer",
+  content="Round 2: Read the validator's findings at ${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md and the breaker's findings at ${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md. Send COMPLETENESS GAP messages to validator for any requirements or must-haves not in their findings: SendMessage(type='message', recipient='validator', content='COMPLETENESS GAP: Requirement [X] has no verification. Must-have [Y] from plan [Z] missing.', summary='Gap on [requirement]'). Stop when all gaps sent.",
+  summary="Start Round 2 completeness check"
+)
+```
+
+**Step V6: Wait for Round 2 completion**
+
+**IMPORTANT: Wait here for all active teammates to go idle again.** Idle notifications are delivered automatically. Do NOT proceed until all have gone idle.
+
+**Step V7: Lead Synthesis -- Create VERIFICATION.md**
+
+Read ALL 3 findings files. Synthesize into a single VERIFICATION.md using the EXACT SAME FORMAT as classic mode. This is critical -- downstream tools (like plan-phase --gaps) expect specific frontmatter fields and YAML structure.
+
+1. Read validator findings: extract truth verification statuses, artifact check results, key link statuses
+2. Read breaker findings: extract issues found -- any STUB, ORPHANED, or MISSING items that validator missed must be incorporated
+3. Read reviewer findings: extract requirements coverage, anti-patterns, human verification needs
+
+**Resolution logic for conflicting findings:**
+- If breaker found a valid issue that validator marked VERIFIED, change to FAILED (breaker wins on adversarial findings)
+- If reviewer found a completeness gap (missing requirement verification), add it as a gap
+- If evidence is ambiguous, mark as UNCERTAIN and add to human_verification items
+
+**Determine overall status:**
+- **passed**: All truths VERIFIED by validator, no valid breaker challenges, no completeness gaps
+- **gaps_found**: Any truths FAILED, valid breaker challenges accepted, or completeness gaps
+- **human_needed**: All automated checks pass but reviewer flagged items for human verification
+
+**Write VERIFICATION.md** at `${PHASE_DIR}/${PADDED_PHASE}-VERIFICATION.md` using the EXACT classic format (see existing `<output>` section in gsd-verifier.md for the template).
+
+Add a `**Mode:** Hybrid (adversarial team: validator + breaker + reviewer)` line to the report body to differentiate from classic.
+
+**Step V8: Clean up findings files**
+
+Delete temporary findings files BEFORE shutdown:
+
+```bash
+rm "${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md" 2>/dev/null
+rm "${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md" 2>/dev/null
+rm "${PHASE_DIR}/${PADDED_PHASE}-REVIEWER-FINDINGS.md" 2>/dev/null
+```
+
+**Step V9: Shutdown teammates**
+
+```
+SendMessage(type="shutdown_request", recipient="validator", content="Verification complete. Thank you for your work.")
+SendMessage(type="shutdown_request", recipient="breaker", content="Verification complete. Thank you for your work.")
+SendMessage(type="shutdown_request", recipient="reviewer", content="Verification complete. Thank you for your work.")
+```
+
+Wait for shutdown confirmations.
+
+**Step V10: Clean up team**
+
+```
+TeamDelete()
+```
+
+Display:
+```
+>> Verification complete (hybrid mode -- adversarial team)
+```
+
+**Step V11: Read verification status and continue**
+
+After synthesis, read verification status exactly as classic mode does:
+
+```bash
+grep "^status:" "$PHASE_DIR"/*-VERIFICATION.md | cut -d: -f2 | tr -d ' '
+```
+
+Continue to the SAME status handling logic that exists after the classic branch (passed, human_needed, gaps_found). The verification status routing is SHARED between both branches -- it works the same regardless of which branch produced the VERIFICATION.md.
+
+---
+
+**If USE_HYBRID=false OR FALLBACK_TO_CLASSIC=true: Classic Verification (existing code)**
+
+**If FALLBACK_TO_CLASSIC was set after TeamCreate succeeded (team exists but verification failed), clean up the team first:**
+```
+TeamDelete()
+```
+
+Display:
+```
+[!] Hybrid mode failed, using classic verification mode
+```
+
+The existing classic code block (the Task spawn to gsd-verifier):
+
 ```
 Task(
   prompt="Verify phase {phase_number} goal achievement.
@@ -298,6 +605,10 @@ Check must_haves against actual codebase. Create VERIFICATION.md.",
   model="{verifier_model}"
 )
 ```
+
+---
+
+**Status Routing (Shared between both branches):**
 
 Read status:
 ```bash
