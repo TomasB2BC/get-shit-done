@@ -122,7 +122,7 @@ Write to: .planning/phases/${PHASE}-{slug}/${PHASE}-RESEARCH.md
 
 <debate_protocol>
 Round 1: Draft your research perspective
-Round 2: Review teammates' ADVOCATE-NOTES.md and EXPLORER-NOTES.md, strengthen your analysis
+Round 2: Review teammates' ${PHASE}-ADVOCATE-NOTES.md and ${PHASE}-EXPLORER-NOTES.md, strengthen your analysis
 Round 3: Finalize RESEARCH.md with a 'Dissenting Views / Risks & Alternatives' section incorporating teammate perspectives
 </debate_protocol>",
   subagent_type="general-purpose",
@@ -132,7 +132,7 @@ Round 3: Finalize RESEARCH.md with a 'Dissenting Views / Risks & Alternatives' s
 )
 ```
 
-**Devil's Advocate (owns ADVOCATE-NOTES.md -- temporary):**
+**Devil's Advocate (owns ${PHASE}-ADVOCATE-NOTES.md -- temporary):**
 
 ```
 Task(
@@ -156,12 +156,12 @@ Phase context: {context_md}
 </context>
 
 <output>
-Write to: .planning/phases/${PHASE}-{slug}/ADVOCATE-NOTES.md
+Write to: .planning/phases/${PHASE}-{slug}/${PHASE}-ADVOCATE-NOTES.md
 </output>
 
 <debate_protocol>
 Round 1: Draft your critical perspective
-Round 2: Review teammates' RESEARCH.md and EXPLORER-NOTES.md, refine your challenges
+Round 2: Review teammates' RESEARCH.md and ${PHASE}-EXPLORER-NOTES.md, refine your challenges
 (Round 3: Optimist incorporates your perspective -- you do not write in Round 3)
 </debate_protocol>",
   subagent_type="general-purpose",
@@ -171,7 +171,7 @@ Round 2: Review teammates' RESEARCH.md and EXPLORER-NOTES.md, refine your challe
 )
 ```
 
-**Explorer (owns EXPLORER-NOTES.md -- temporary):**
+**Explorer (owns ${PHASE}-EXPLORER-NOTES.md -- temporary):**
 
 ```
 Task(
@@ -195,12 +195,12 @@ Phase context: {context_md}
 </context>
 
 <output>
-Write to: .planning/phases/${PHASE}-{slug}/EXPLORER-NOTES.md
+Write to: .planning/phases/${PHASE}-{slug}/${PHASE}-EXPLORER-NOTES.md
 </output>
 
 <debate_protocol>
 Round 1: Draft your exploratory perspective
-Round 2: Review teammates' RESEARCH.md and ADVOCATE-NOTES.md, expand alternatives
+Round 2: Review teammates' RESEARCH.md and ${PHASE}-ADVOCATE-NOTES.md, expand alternatives
 (Round 3: Optimist incorporates your perspective -- you do not write in Round 3)
 </debate_protocol>",
   subagent_type="general-purpose",
@@ -219,8 +219,8 @@ Wait for all 3 teammates to become idle.
 ```bash
 # Verify all perspective files exist
 ls .planning/phases/${PHASE}-{slug}/${PHASE}-RESEARCH.md 2>/dev/null
-ls .planning/phases/${PHASE}-{slug}/ADVOCATE-NOTES.md 2>/dev/null
-ls .planning/phases/${PHASE}-{slug}/EXPLORER-NOTES.md 2>/dev/null
+ls .planning/phases/${PHASE}-{slug}/${PHASE}-ADVOCATE-NOTES.md 2>/dev/null
+ls .planning/phases/${PHASE}-{slug}/${PHASE}-EXPLORER-NOTES.md 2>/dev/null
 ```
 
 Display: `>> Round 1 complete -- all perspectives drafted`
@@ -278,8 +278,8 @@ Display: `>> Round 3 complete -- RESEARCH.md finalized with dissenting views`
 **Step H7: Clean up perspective notes**
 
 ```bash
-rm .planning/phases/${PHASE}-{slug}/ADVOCATE-NOTES.md 2>/dev/null
-rm .planning/phases/${PHASE}-{slug}/EXPLORER-NOTES.md 2>/dev/null
+rm .planning/phases/${PHASE}-{slug}/${PHASE}-ADVOCATE-NOTES.md 2>/dev/null
+rm .planning/phases/${PHASE}-{slug}/${PHASE}-EXPLORER-NOTES.md 2>/dev/null
 ```
 
 **Step H8: Shutdown teammates**
