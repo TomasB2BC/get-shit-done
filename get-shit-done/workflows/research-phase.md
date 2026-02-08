@@ -231,18 +231,24 @@ Send message to all 3 teammates:
 
 ```
 SendMessage(
-  teammate_name="optimist",
-  message="Round 2: Review ADVOCATE-NOTES.md and EXPLORER-NOTES.md. Strengthen your analysis in RESEARCH.md by addressing valid concerns and incorporating alternative approaches where beneficial. Reply with 'Round 2 complete' when done."
+  type="message",
+  recipient="devil's-advocate",
+  content="Round 2: Review the optimist's draft RESEARCH.md. Send your challenges directly to the optimist using SendMessage(type='message', recipient='optimist', content='CHALLENGE: ...', summary='Challenge on [topic]'). Send one message per distinct challenge (2-3 sentences each with specific evidence). Stop when all challenges are sent.",
+  summary="Start Round 2 challenges"
 )
 
 SendMessage(
-  teammate_name="devil's-advocate",
-  message="Round 2: Review RESEARCH.md and EXPLORER-NOTES.md. Refine your critical analysis in ADVOCATE-NOTES.md based on the optimist's plan and explorer's alternatives. Reply with 'Round 2 complete' when done."
+  type="message",
+  recipient="explorer",
+  content="Round 2: Review the optimist's draft RESEARCH.md. Send your alternative perspectives directly to the optimist using SendMessage(type='message', recipient='optimist', content='ALTERNATIVE: ...', summary='Alternative on [topic]'). Send one message per distinct insight (2-3 sentences each). Stop when all alternatives are sent.",
+  summary="Start Round 2 alternatives"
 )
 
 SendMessage(
-  teammate_name="explorer",
-  message="Round 2: Review RESEARCH.md and ADVOCATE-NOTES.md. Expand your alternative approaches in EXPLORER-NOTES.md considering both the optimist's direction and the advocate's concerns. Reply with 'Round 2 complete' when done."
+  type="message",
+  recipient="optimist",
+  content="Round 2: Wait for challenge messages from devil's advocate and explorer. They will send you direct messages with challenges and alternatives. Review each one and prepare to address them in Round 3. Stop after reviewing all incoming messages.",
+  summary="Wait for Round 2 challenges"
 )
 ```
 
@@ -258,8 +264,10 @@ Send message to optimist only:
 
 ```
 SendMessage(
-  teammate_name="optimist",
-  message="Round 3 (FINAL): Add a 'Dissenting Views / Risks & Alternatives' section to RESEARCH.md incorporating key points from ADVOCATE-NOTES.md and EXPLORER-NOTES.md. This is the final deliverable. Reply with 'Research finalized' when done."
+  type="message",
+  recipient="optimist",
+  content="Round 3 (FINAL): Add a 'Dissenting Views / Risks & Alternatives' section to RESEARCH.md incorporating key points from ${PHASE}-ADVOCATE-NOTES.md and ${PHASE}-EXPLORER-NOTES.md. This is the final deliverable. Reply with 'Research finalized' when done.",
+  summary="Start Round 3 finalization"
 )
 ```
 
@@ -278,18 +286,21 @@ rm .planning/phases/${PHASE}-{slug}/EXPLORER-NOTES.md 2>/dev/null
 
 ```
 SendMessage(
-  teammate_name="optimist",
-  message="shutdown_request"
+  type="shutdown_request",
+  recipient="optimist",
+  content="Research complete. Thank you for your work."
 )
 
 SendMessage(
-  teammate_name="devil's-advocate",
-  message="shutdown_request"
+  type="shutdown_request",
+  recipient="devil's-advocate",
+  content="Research complete. Thank you for your work."
 )
 
 SendMessage(
-  teammate_name="explorer",
-  message="shutdown_request"
+  type="shutdown_request",
+  recipient="explorer",
+  content="Research complete. Thank you for your work."
 )
 ```
 
