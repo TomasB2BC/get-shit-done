@@ -224,7 +224,7 @@ Task(
 Note: For devil's advocate, modify output section:
 ```
 <output>
-Write to: {phase_dir}/ADVOCATE-NOTES.md
+Write to: {phase_dir}/${PADDED_PHASE}-ADVOCATE-NOTES.md
 </output>
 ```
 
@@ -243,7 +243,7 @@ Task(
 Note: For explorer, modify output section:
 ```
 <output>
-Write to: {phase_dir}/EXPLORER-NOTES.md
+Write to: {phase_dir}/${PADDED_PHASE}-EXPLORER-NOTES.md
 </output>
 ```
 
@@ -263,8 +263,8 @@ Wait for all spawned teammates to report idle.
 ```bash
 # Verify draft files exist
 ls "${PHASE_DIR}"/*-RESEARCH.md 2>/dev/null
-ls "${PHASE_DIR}"/ADVOCATE-NOTES.md 2>/dev/null
-ls "${PHASE_DIR}"/EXPLORER-NOTES.md 2>/dev/null
+ls "${PHASE_DIR}"/${PADDED_PHASE}-ADVOCATE-NOTES.md 2>/dev/null
+ls "${PHASE_DIR}"/${PADDED_PHASE}-EXPLORER-NOTES.md 2>/dev/null
 ```
 
 **Step H4: Prompt Round 2 (Challenge Exchange)**
@@ -314,8 +314,8 @@ Wait for optimist to go idle.
 **Step H7: Clean up perspective notes**
 
 ```bash
-rm -f "${PHASE_DIR}"/ADVOCATE-NOTES.md
-rm -f "${PHASE_DIR}"/EXPLORER-NOTES.md
+rm -f "${PHASE_DIR}"/${PADDED_PHASE}-ADVOCATE-NOTES.md
+rm -f "${PHASE_DIR}"/${PADDED_PHASE}-EXPLORER-NOTES.md
 ```
 
 **Step H8: Shutdown teammates**
