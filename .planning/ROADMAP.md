@@ -84,9 +84,11 @@ Plans:
 **Requirements:** VER-01, VER-02, VER-03, VER-04, AGT-04
 **Plans:** 2 plans
 
+**Status:** Complete (2026-02-08)
+
 Plans:
-- [ ] 05-01-PLAN.md -- Add teammate-mode instructions to gsd-verifier.md (AGT-04)
-- [ ] 05-02-PLAN.md -- Add hybrid branch to execute-phase.md verify_phase_goal step (VER-01, VER-02, VER-03, VER-04)
+- [x] 05-01-PLAN.md -- Add teammate-mode instructions to gsd-verifier.md (AGT-04)
+- [x] 05-02-PLAN.md -- Add hybrid branch to execute-phase.md verify_phase_goal step (VER-01, VER-02, VER-03, VER-04)
 
 **Success Criteria:**
 1. execute-phase.md Step 7 spawns 3-teammate adversarial team
@@ -98,6 +100,14 @@ Plans:
 ### Phase 6: Codebase Mapping Hybrid (map-codebase.md)
 **Goal:** Codebase mapping uses collaborative Agent Team for cross-referenced analysis
 **Requirements:** MAP-01, MAP-02, MAP-03, AGT-05
+**Plans:** 2 plans
+
+**Status:** In progress (2026-02-08)
+
+Plans:
+- [x] 06-01-PLAN.md -- Add teammate-mode instructions to gsd-codebase-mapper.md (AGT-05)
+- [ ] 06-02-PLAN.md -- Add hybrid branch to map-codebase.md spawn_agents step (MAP-01, MAP-02, MAP-03)
+
 **Success Criteria:**
 1. map-codebase.md Step 3 spawns 4 collaborative mapper teammates
 2. Mappers cross-reference findings (tech informs quality, arch informs concerns)
@@ -170,4 +180,4 @@ more viable. Cost tradeoff: fewer sessions needed, higher per-session cost.
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-08 after Phase 4 execution complete*
+*Last updated: 2026-02-08 after Phase 5 execution complete*
