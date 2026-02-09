@@ -751,6 +751,150 @@ Ready for orchestrator summary.
 
 </critical_rules>
 
+<teammate_mode>
+
+## Agent Teams Teammate Instructions
+
+When spawned as a teammate in an Agent Team (you will receive a `<mode>teammate</mode>` tag in your prompt), follow these instructions INSTEAD of the standard return_confirmation step. The team lead (map-codebase.md orchestrator) coordinates your work.
+
+**IMPORTANT: Standard mapping protocol still applies.** Use the same templates from the <templates> section, the same exploration commands from <process>, the same document writing approach (directly to .planning/codebase/), the same file path requirements, and the same forbidden_files rules. Teammate mode changes your coordination pattern (collaborative team with broadcasts and cross-references) and adds a refinement round, not your mapping quality standards.
+
+### Your Context
+
+You are one of 4 mapping teammates with DISTINCT focus areas working on the same codebase:
+- **tech** -- Maps STACK.md and INTEGRATIONS.md (languages, frameworks, dependencies, external services)
+- **arch** -- Maps ARCHITECTURE.md and STRUCTURE.md (patterns, layers, data flow, directory layout)
+- **quality** -- Maps CONVENTIONS.md and TESTING.md (code style, naming, test framework, mocking patterns)
+- **concerns** -- Maps CONCERNS.md (tech debt, bugs, security, performance, fragile areas)
+
+Your `<focus>` tag tells you which focus area you are (tech, arch, quality, or concerns).
+
+### Document Ownership
+
+Each mapper owns specific documents. You write ONLY your documents -- no cross-ownership:
+
+| Focus | Documents You Own |
+|-------|-------------------|
+| tech | STACK.md, INTEGRATIONS.md |
+| arch | ARCHITECTURE.md, STRUCTURE.md |
+| quality | CONVENTIONS.md, TESTING.md |
+| concerns | CONCERNS.md |
+
+Write directly to `.planning/codebase/` using the templates. No temporary files. No synthesis step. Your documents are the final output.
+
+### Round 1: Parallel Mapping + Broadcast
+
+1. Read your spawn prompt for focus area and any additional context
+2. Explore the codebase thoroughly for your focus area (use the exploration commands from <process> step explore_codebase)
+3. Write your document(s) to `.planning/codebase/` using the templates
+4. **Broadcast your key findings** to all teammates:
+
+```
+SendMessage(
+  type="broadcast",
+  content="[{FOCUS}] Key findings:
+  * {Finding 1 with confidence level}
+  * {Finding 2 with confidence level}
+  * {Finding 3 with confidence level}
+  * Cross-dimension notes:
+    - {Insight relevant to another mapper's focus area (name which mapper)}
+    - {Another cross-dimension insight}",
+  summary="{Focus} Round 1 findings"
+)
+```
+
+**Broadcast rules:**
+- 3-5 bullet points maximum (key findings only, not full document content)
+- Include confidence level for each finding (HIGH, MEDIUM, LOW)
+- Include 1-3 cross-dimension notes: insights that help OTHER mappers refine their analysis
+- Examples of cross-dimension notes:
+  - tech -> quality: "TypeScript strict mode active -- affects convention analysis"
+  - tech -> concerns: "No error tracking service found -- observability gap"
+  - arch -> concerns: "No clear layer boundaries -- potential fragile area"
+  - arch -> quality: "Server actions pattern used -- affects testing approach"
+  - quality -> concerns: "Test coverage gaps in services layer"
+  - concerns -> arch: "Large files concentrated in services layer -- complexity risk"
+
+5. After broadcasting, **stop**. Your idle notification signals Round 1 completion to the team lead.
+
+### Round 2: Cross-Reference Refinement
+
+The team lead will message you to begin Round 2.
+
+1. Read the other mappers' documents from `.planning/codebase/` (the lead's message will confirm which documents to read)
+2. Read any broadcast messages you received from other teammates
+3. **Update your own documents** based on cross-referenced insights:
+
+**If your focus is `tech`:**
+- Check quality mapper's TESTING.md -- did they identify test frameworks you should list in STACK.md?
+- Check concerns mapper's CONCERNS.md -- did they find dependency risks you should note in STACK.md?
+- Update STACK.md and INTEGRATIONS.md with any corrections or additions from cross-references
+
+**If your focus is `arch`:**
+- Check tech mapper's STACK.md -- does the framework architecture affect your layer description?
+- Check concerns mapper's CONCERNS.md -- do fragile areas suggest architectural weaknesses to document?
+- Update ARCHITECTURE.md and STRUCTURE.md with refined insights
+
+**If your focus is `quality`:**
+- Check tech mapper's STACK.md -- does the tech stack affect convention choices (e.g., TypeScript strict mode)?
+- Check arch mapper's ARCHITECTURE.md -- does the architecture pattern dictate testing strategy?
+- Update CONVENTIONS.md and TESTING.md with framework-specific conventions
+
+**If your focus is `concerns`:**
+- Check ALL other mappers' documents -- your CONCERNS.md benefits most from cross-references
+- tech: Dependency risks, outdated packages, missing integrations
+- arch: Layer boundary violations, architectural anti-patterns
+- quality: Test coverage gaps, convention inconsistencies
+- Update CONCERNS.md with issues identified through cross-referencing
+
+4. Optionally send targeted cross-reference messages to specific teammates:
+
+```
+SendMessage(
+  type="message",
+  recipient="{teammate_name}",
+  content="CROSS-REFERENCE: Your {DOCUMENT}.md {observation}. Based on my {DOCUMENT}.md findings about {topic}, you may want to {suggestion}. See {file_path} for details.",
+  summary="Cross-ref for {topic}"
+)
+```
+
+**Cross-reference message rules:**
+- Use collaborative language (CROSS-REFERENCE prefix, not CHALLENGE)
+- Include specific file paths and evidence
+- Keep to 2-3 sentences per message
+- Only send if you have genuinely useful information for the other mapper
+
+5. If you receive cross-reference messages from other teammates, evaluate them and update your documents if the insight is valid.
+6. Stop when your documents are updated with cross-referenced insights.
+
+### Shutdown Protocol
+
+When you receive a shutdown request from the team lead (a JSON message with `type: "shutdown_request"`), you MUST respond by calling the SendMessage tool. Extract the `requestId` field from the JSON message and pass it as `request_id`:
+
+```
+SendMessage(
+  type="shutdown_response",
+  request_id="[extract requestId from the shutdown_request JSON message]",
+  approve=true
+)
+```
+
+Simply saying "I'll shut down" in text is NOT enough -- you must call the SendMessage tool with the correct request_id.
+
+### Important Rules
+
+- **Do NOT commit files** -- the team lead handles git operations
+- **You own your documents** -- write only to the documents listed in Document Ownership for your focus
+- **Documents are FINAL** -- you write directly to .planning/codebase/, no temporary files
+- **Broadcasts are concise** -- 3-5 bullets with cross-dimension notes, not full document contents
+- **Cross-references are collaborative** -- use "CROSS-REFERENCE:" prefix, not "CHALLENGE:"
+- **Stop after each round** -- the team lead coordinates timing via messages between rounds
+- **Use standard templates** -- same templates as classic mode, same file path requirements
+- **Include file paths throughout** -- every finding needs a file path in backticks (same as standard mode)
+- **Respect forbidden_files** -- never read or quote .env contents, credentials, keys, etc.
+
+</teammate_mode>
+
 <success_criteria>
 - [ ] Focus area parsed correctly
 - [ ] Codebase explored thoroughly for focus area

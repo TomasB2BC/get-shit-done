@@ -36,14 +36,14 @@ Configuration options for `.planning/` directory behavior.
 - User must add `.planning/` to `.gitignore`
 - Useful for: OSS contributions, client projects, keeping planning private
 
-**Checking the config:**
+**Using gsd-tools.js (preferred):**
 
 ```bash
-# Check config.json first
-COMMIT_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
+# Commit with automatic commit_docs + gitignore checks:
+node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: update state" --files .planning/STATE.md
 
-# Auto-detect gitignored (overrides config)
-git check-ignore -q .planning 2>/dev/null && COMMIT_DOCS=false
+# Or read config manually:
+COMMIT_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```
 
 **Auto-detection:** If `.planning/` is gitignored, `commit_docs` is automatically `false` regardless of config.json. This prevents git errors when users have `.planning/` in `.gitignore`.
@@ -137,14 +137,10 @@ To use uncommitted mode:
 **Checking the config:**
 
 ```bash
-# Get branching strategy (default: none)
-BRANCHING_STRATEGY=$(cat .planning/config.json 2>/dev/null | grep -o '"branching_strategy"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*:.*"\([^"]*\)"/\1/' || echo "none")
-
-# Get phase branch template
-PHASE_BRANCH_TEMPLATE=$(cat .planning/config.json 2>/dev/null | grep -o '"phase_branch_template"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*:.*"\([^"]*\)"/\1/' || echo "gsd/phase-{phase}-{slug}")
-
-# Get milestone branch template
-MILESTONE_BRANCH_TEMPLATE=$(cat .planning/config.json 2>/dev/null | grep -o '"milestone_branch_template"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*:.*"\([^"]*\)"/\1/' || echo "gsd/{milestone}-{slug}")
+GSD_CONFIG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+BRANCHING_STRATEGY=$(echo "$GSD_CONFIG" | grep '^branching_strategy=' | cut -d= -f2)
+PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cut -d= -f2)
+MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
 ```
 
 **Branch creation:**
@@ -185,5 +181,105 @@ Squash merge is recommended — keeps main branch history clean while preserving
 | `milestone` | Release branches, staging environments, PR per version |
 
 </branching_strategy_behavior>
+
+<orchestration_mode>
+
+**Field:** `orchestration`
+**Values:** `"classic"` (default) | `"hybrid"`
+**Location:** `.planning/config.json` (top-level field)
+
+**Reading the field:**
+```bash
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+```
+
+**Mode behaviors:**
+- `classic`: All agent operations use Task subagents (default GSD behavior)
+- `hybrid`: Commands check per-command agent_teams toggles and may use Agent Teams when enabled
+
+**Note:** Setting orchestration to "hybrid" alone does NOT enable Agent Teams. The compound detection pattern (see `<hybrid_detection_pattern>`) requires BOTH the config field AND the environment variable.
+
+</orchestration_mode>
+
+<agent_teams_config>
+
+**Field:** `agent_teams` (nested object)
+**Location:** `.planning/config.json` (top-level field)
+
+```json
+"agent_teams": {
+  "research": false,
+  "debug": false,
+  "verification": false,
+  "codebase_mapping": false
+}
+```
+
+| Sub-field | Default | Controls |
+|-----------|---------|----------|
+| `research` | `false` | new-project.md Phase 6, research-phase.md |
+| `debug` | `false` | debug.md hypothesis testing |
+| `verification` | `false` | execute-phase.md verification step |
+| `codebase_mapping` | `false` | map-codebase.md collaborative mapping |
+
+**Reading the field (use grep -A5 to avoid collision with workflow.research):**
+```bash
+AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_DEBUG=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"debug"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_VERIFICATION=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"verification"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_CODEBASE_MAPPING=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"codebase_mapping"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
+
+**Important:** Use `grep -A5 '"agent_teams"'` prefix to scope the search to the agent_teams object. Without this, `"research"` would match `workflow.research` as well.
+
+</agent_teams_config>
+
+<hybrid_detection_pattern>
+
+**Compound detection: config field AND environment variable**
+
+Hybrid mode requires BOTH conditions:
+1. `orchestration` = `"hybrid"` in `.planning/config.json`
+2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable set
+
+**5-step detection logic (canonical pattern -- use this in all commands):**
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check (only when compound check passes)
+  AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "WARNING: orchestration=hybrid but Agent Teams not available or not enabled for this command"
+  echo "Falling back to classic mode"
+fi
+```
+
+**Per-command toggle mapping:**
+
+| Command | Toggle field | What changes in hybrid |
+|---------|-------------|----------------------|
+| new-project.md (Phase 6) | `agent_teams.research` | 4 researchers use Agent Teams with debate |
+| research-phase.md | `agent_teams.research` | Debate-style research team |
+| debug.md | `agent_teams.debug` | Competing hypotheses pattern |
+| execute-phase.md (verify) | `agent_teams.verification` | Adversarial verification team |
+| map-codebase.md | `agent_teams.codebase_mapping` | Collaborative mapping team |
+
+**Graceful fallback:** When hybrid conditions are not fully met, commands fall back to classic mode silently (with a one-time warning). This ensures GSD never breaks due to missing env var or config.
+
+</hybrid_detection_pattern>
 
 </planning_config>

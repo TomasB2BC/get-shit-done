@@ -23,28 +23,17 @@ Documents are reference material for Claude when planning/executing. Always incl
 <process>
 
 <step name="resolve_model_profile" priority="first">
-Read model profile for agent spawning:
-
 ```bash
-MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
+MAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-codebase-mapper --raw)
 ```
-
-Default to "balanced" if not set.
-
-**Model lookup table:**
-
-| Agent | quality | balanced | budget |
-|-------|---------|----------|--------|
-| gsd-codebase-mapper | sonnet | haiku | haiku |
-
-Store resolved model for use in Task calls below.
 </step>
 
 <step name="check_existing">
 Check if .planning/codebase/ already exists:
 
 ```bash
-ls -la .planning/codebase/ 2>/dev/null
+CODEBASE_MAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/codebase --raw)
+[ "$CODEBASE_MAP_EXISTS" = "true" ] && ls -la .planning/codebase/
 ```
 
 **If exists:**
@@ -89,6 +78,265 @@ Continue to spawn_agents.
 </step>
 
 <step name="spawn_agents">
+**Detect orchestration mode:**
+
+```bash
+# Step 1: Read orchestration mode from config
+ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "classic")
+
+# Step 2: Check environment variable
+AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
+
+# Step 3: Compound check -- BOTH must be true
+USE_HYBRID=false
+if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
+  # Step 4: Per-command toggle check
+  AGENT_TEAMS_MAPPING=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"codebase_mapping"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  if [ "$AGENT_TEAMS_MAPPING" = "true" ]; then
+    USE_HYBRID=true
+  fi
+fi
+
+# Step 5: Graceful fallback warning
+if [ "$USE_HYBRID" = "false" ] && [ "$ORCH_MODE" = "hybrid" ]; then
+  echo "[!] WARNING: orchestration=hybrid but Agent Teams not available or codebase_mapping not enabled"
+  echo "[!] Falling back to classic mode"
+fi
+```
+
+**If USE_HYBRID=true: Hybrid Mapping (Agent Teams - Collaborative Team)**
+
+Display hybrid indicator:
+```
+>> Using Agent Teams for codebase mapping (hybrid mode)
+>> Collaborative protocol: tech + arch + quality + concerns
+```
+
+**Step M1: Create mapping team**
+
+```
+TeamCreate(
+  team_name="codebase-mapping",
+  description="Codebase mapping - collaborative team (tech, arch, quality, concerns)"
+)
+```
+
+If TeamCreate fails, display warning and set FALLBACK_TO_CLASSIC=true:
+```
+[!] WARNING: Agent Teams team creation failed, falling back to classic mode
+```
+
+**Step M2: Spawn 4 mapper teammates**
+
+Spawn all 4 in parallel using Task with team_name and name parameters:
+
+```
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>codebase-mapping</team_name>
+<focus>tech</focus>
+
+<objective>
+Analyze this codebase for technology stack and external integrations.
+
+Write these documents to .planning/codebase/:
+- STACK.md - Languages, runtime, frameworks, dependencies, configuration
+- INTEGRATIONS.md - External APIs, databases, auth providers, webhooks
+
+Round 1: Explore thoroughly, write documents, broadcast key findings (3-5 bullets with cross-dimension notes).
+Round 2: Read other mappers' documents, update yours based on cross-references.
+</objective>",
+  subagent_type="gsd-codebase-mapper",
+  model="${MAPPER_MODEL}",
+  description="Map codebase tech stack",
+  team_name="codebase-mapping",
+  name="tech"
+)
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>codebase-mapping</team_name>
+<focus>arch</focus>
+
+<objective>
+Analyze this codebase architecture and directory structure.
+
+Write these documents to .planning/codebase/:
+- ARCHITECTURE.md - Pattern, layers, data flow, abstractions, entry points
+- STRUCTURE.md - Directory layout, key locations, naming conventions
+
+Round 1: Explore thoroughly, write documents, broadcast key findings (3-5 bullets with cross-dimension notes).
+Round 2: Read other mappers' documents, update yours based on cross-references.
+</objective>",
+  subagent_type="gsd-codebase-mapper",
+  model="${MAPPER_MODEL}",
+  description="Map codebase architecture",
+  team_name="codebase-mapping",
+  name="arch"
+)
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>codebase-mapping</team_name>
+<focus>quality</focus>
+
+<objective>
+Analyze this codebase for coding conventions and testing patterns.
+
+Write these documents to .planning/codebase/:
+- CONVENTIONS.md - Code style, naming, patterns, error handling
+- TESTING.md - Framework, structure, mocking, coverage
+
+Round 1: Explore thoroughly, write documents, broadcast key findings (3-5 bullets with cross-dimension notes).
+Round 2: Read other mappers' documents, update yours based on cross-references.
+</objective>",
+  subagent_type="gsd-codebase-mapper",
+  model="${MAPPER_MODEL}",
+  description="Map codebase conventions",
+  team_name="codebase-mapping",
+  name="quality"
+)
+
+Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+
+<mode>teammate</mode>
+<team_name>codebase-mapping</team_name>
+<focus>concerns</focus>
+
+<objective>
+Analyze this codebase for technical debt, known issues, and areas of concern.
+
+Write this document to .planning/codebase/:
+- CONCERNS.md - Tech debt, bugs, security, performance, fragile areas
+
+Round 1: Explore thoroughly, write document, broadcast key findings (3-5 bullets with cross-dimension notes).
+Round 2: Read ALL other mappers' documents (your CONCERNS.md benefits most from cross-references), update yours based on insights from tech stack risks, architectural weaknesses, and quality gaps.
+</objective>",
+  subagent_type="gsd-codebase-mapper",
+  model="${MAPPER_MODEL}",
+  description="Map codebase concerns",
+  team_name="codebase-mapping",
+  name="concerns"
+)
+```
+
+If any teammate fails to spawn, log warning. If fewer than 3 teammates spawn successfully (0-2 succeed), set FALLBACK_TO_CLASSIC=true. If 3 spawn, continue with available teammates and log warning for missing mapper's documents.
+
+**Step M3: Wait for Round 1 completion**
+
+**IMPORTANT: The orchestrator MUST wait here. Do NOT start writing or modifying any files.** Idle notifications are delivered automatically. Do NOT proceed to Round 2 until all spawned teammates have gone idle.
+
+After all teammates go idle, verify documents are being created:
+
+```bash
+ls .planning/codebase/*.md 2>/dev/null | wc -l
+```
+
+If zero documents exist, set FALLBACK_TO_CLASSIC=true. If some exist, continue with Round 2.
+
+**Step M4: Prompt Round 2 (Cross-Reference Refinement)**
+
+Send messages to each teammate to begin Round 2. Only send to teammates that actually spawned:
+
+```
+SendMessage(
+  type="message",
+  recipient="tech",
+  content="Round 2: Read the other mappers' documents at .planning/codebase/. Check TESTING.md for test frameworks to add to STACK.md, and CONCERNS.md for dependency risks. Update your STACK.md and INTEGRATIONS.md with any cross-referenced insights. Send CROSS-REFERENCE messages to other mappers if you have useful information for them. Stop when your documents are updated.",
+  summary="Start Round 2 cross-referencing"
+)
+
+SendMessage(
+  type="message",
+  recipient="arch",
+  content="Round 2: Read the other mappers' documents at .planning/codebase/. Check STACK.md for framework architecture patterns, and CONCERNS.md for fragile areas suggesting architectural weaknesses. Update your ARCHITECTURE.md and STRUCTURE.md with cross-referenced insights. Send CROSS-REFERENCE messages to other mappers if you have useful information for them. Stop when your documents are updated.",
+  summary="Start Round 2 cross-referencing"
+)
+
+SendMessage(
+  type="message",
+  recipient="quality",
+  content="Round 2: Read the other mappers' documents at .planning/codebase/. Check STACK.md for tech stack conventions (e.g., TypeScript strict mode), and ARCHITECTURE.md for patterns that dictate testing strategy. Update your CONVENTIONS.md and TESTING.md with cross-referenced insights. Send CROSS-REFERENCE messages to other mappers if you have useful information for them. Stop when your documents are updated.",
+  summary="Start Round 2 cross-referencing"
+)
+
+SendMessage(
+  type="message",
+  recipient="concerns",
+  content="Round 2: Read ALL other mappers' documents at .planning/codebase/. Your CONCERNS.md benefits most from cross-references. Check STACK.md for dependency risks, ARCHITECTURE.md for boundary violations, CONVENTIONS.md and TESTING.md for quality gaps. Update your CONCERNS.md with issues identified through cross-referencing. Send CROSS-REFERENCE messages to other mappers if you have useful information for them. Stop when your document is updated.",
+  summary="Start Round 2 cross-referencing"
+)
+```
+
+**Step M5: Wait for Round 2 completion**
+
+**IMPORTANT: Wait here for all active teammates to go idle again.** Idle notifications are delivered automatically. Do NOT proceed until all have gone idle.
+
+**Step M6: Verify all 7 documents exist with substantive content**
+
+```bash
+# Verify all 7 documents exist with >20 lines each
+DOCS_OK=true
+for doc in STACK.md INTEGRATIONS.md ARCHITECTURE.md STRUCTURE.md CONVENTIONS.md TESTING.md CONCERNS.md; do
+  LINES=$(wc -l < .planning/codebase/$doc 2>/dev/null || echo 0)
+  if [ "$LINES" -lt 20 ]; then
+    echo "[!] WARNING: $doc only $LINES lines (expected >20)"
+    DOCS_OK=false
+  fi
+done
+
+if [ "$DOCS_OK" = "false" ]; then
+  echo "[!] Some documents incomplete -- check mapper output"
+fi
+```
+
+This is a warning only, not a fallback trigger.
+
+**Step M7: Shutdown teammates**
+
+Send shutdown to teammates that actually spawned:
+
+```
+SendMessage(type="shutdown_request", recipient="tech", content="Mapping complete. Thank you for your work.")
+SendMessage(type="shutdown_request", recipient="arch", content="Mapping complete. Thank you for your work.")
+SendMessage(type="shutdown_request", recipient="quality", content="Mapping complete. Thank you for your work.")
+SendMessage(type="shutdown_request", recipient="concerns", content="Mapping complete. Thank you for your work.")
+```
+
+Wait for shutdown confirmations.
+
+**Step M8: Clean up team**
+
+```
+TeamDelete()
+```
+
+Display:
+```
+>> Mapping complete (hybrid mode -- collaborative team)
+```
+
+**Step M9: Continue to shared downstream steps**
+
+Continue to collect_confirmations step (shared with classic mode).
+
+---
+
+**If USE_HYBRID=false OR FALLBACK_TO_CLASSIC=true: Classic Mapping (4 isolated Task mappers)**
+
+**If FALLBACK_TO_CLASSIC was set after TeamCreate succeeded (team exists but mapping failed), clean up the team first:**
+```
+TeamDelete()
+```
+
+If FALLBACK_TO_CLASSIC was triggered, display:
+```
+[!] Hybrid mode failed, using classic mapping mode
+```
+
 Spawn 4 parallel gsd-codebase-mapper agents.
 
 Use Task tool with `subagent_type="gsd-codebase-mapper"`, `model="{mapper_model}"`, and `run_in_background=true` for parallel execution.
@@ -268,31 +516,8 @@ Continue to commit_codebase_map.
 <step name="commit_codebase_map">
 Commit the codebase map:
 
-**Check planning config:**
-
 ```bash
-COMMIT_PLANNING_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
-git check-ignore -q .planning 2>/dev/null && COMMIT_PLANNING_DOCS=false
-```
-
-**If `COMMIT_PLANNING_DOCS=false`:** Skip git operations
-
-**If `COMMIT_PLANNING_DOCS=true` (default):**
-
-```bash
-git add .planning/codebase/*.md
-git commit -m "$(cat <<'EOF'
-docs: map existing codebase
-
-- STACK.md - Technologies and dependencies
-- ARCHITECTURE.md - System design and patterns
-- STRUCTURE.md - Directory layout
-- CONVENTIONS.md - Code style and patterns
-- TESTING.md - Test structure
-- INTEGRATIONS.md - External services
-- CONCERNS.md - Technical debt and issues
-EOF
-)"
+node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: map existing codebase" --files .planning/codebase/*.md
 ```
 
 Continue to offer_next.
