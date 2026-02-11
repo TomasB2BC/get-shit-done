@@ -31,7 +31,7 @@
 
 **Milestone Goal:** GSD commands run end-to-end without human input when in agent mode
 
-- [ ] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
+- [x] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
 - [ ] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
 - [ ] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
 
@@ -56,7 +56,7 @@
 Plans:
 - [x] 08-01-PLAN.md -- Auto-decide engine + log-decision + config schema in gsd-tools.js
 - [x] 08-02-PLAN.md -- /gsd:auto command + auto-dispatch.md dispatcher workflow
-- [ ] 08-03-PLAN.md -- Agent-mode branches in new-project, plan-phase, execute-phase workflows
+- [x] 08-03-PLAN.md -- Agent-mode branches in new-project, plan-phase, execute-phase workflows
 
 ### Phase 9: Full Command Coverage
 **Goal:** Extend agent-mode to all workflows with safety limits preventing runaway loops and cost spirals
@@ -110,10 +110,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Verification Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
 | 6. Codebase Mapping Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
 | 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
-| 8. Agent Mode Foundation | v2.0.0 | 2/3 | In progress | - |
+| 8. Agent Mode Foundation | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 9. Full Command Coverage | v2.0.0 | 0/? | Not started | - |
 | 10. Lead-Approval Integration | v2.0.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-11 -- Phase 8 Plan 02 complete (Chain-of-Agents dispatcher)*
+*Last updated: 2026-02-11 -- Phase 8 complete (Agent Mode Foundation verified)*
