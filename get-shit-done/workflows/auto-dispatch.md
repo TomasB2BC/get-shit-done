@@ -56,11 +56,13 @@ CONFIG_RAW=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js state lo
 AUTO_SCOPE=$(echo "$CONFIG_RAW" | grep '^auto_scope=' | cut -d= -f2)
 MAX_PHASES_CONFIG=$(echo "$CONFIG_RAW" | grep '^max_phases=' | cut -d= -f2)
 MAX_ITERATIONS=$(echo "$CONFIG_RAW" | grep '^max_iterations_per_phase=' | cut -d= -f2)
+BUDGET_TOKENS=$(echo "$CONFIG_RAW" | grep '^budget_tokens_per_phase=' | cut -d= -f2)
 
 # Apply defaults if not set
 AUTO_SCOPE=${AUTO_SCOPE:-conservative}
 MAX_PHASES_CONFIG=${MAX_PHASES_CONFIG:-999}
 MAX_ITERATIONS=${MAX_ITERATIONS:-3}
+BUDGET_TOKENS=${BUDGET_TOKENS:-500000}
 ```
 
 **4. Parse CLI flags (overrides config):**
@@ -107,13 +109,21 @@ node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "dispatch" \
   --question "Auto-dispatch started" \
   --decision "Starting autonomous dispatch for milestone $MILESTONE" \
-  --rationale "agent_mode=true, auto_scope=$AUTO_SCOPE, max_phases=$MAX_PHASES, max_iterations=$MAX_ITERATIONS"
+  --rationale "agent_mode=true, auto_scope=$AUTO_SCOPE, max_phases=$MAX_PHASES, max_iterations=$MAX_ITERATIONS, budget_tokens_per_phase=$BUDGET_TOKENS"
+
+# Log model preference for Opus 1M
+node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  --type "dispatch" \
+  --question "Dispatcher model preference" \
+  --decision "Prefer Opus 1M for dispatcher sessions" \
+  --rationale "1M context = 250+ cycles without degradation (4k tokens/cycle). Sonnet 200k = 50 cycles (sufficient for most milestones). Graceful degradation: works on Sonnet for <12 phase milestones."
 ```
 
 **Initialize counters:**
 ```bash
 PHASES_COMPLETED=0
 TOTAL_DECISIONS=0
+STUCK_CYCLES=0
 ```
 
 **Print dispatch header:**
@@ -126,7 +136,9 @@ Agent Mode: ON (auto_scope=$AUTO_SCOPE)
 Starting Phase: $CURRENT_PHASE of $TOTAL_PHASES
 Max Phases: $MAX_PHASES
 Max Iterations: $MAX_ITERATIONS
+Token Budget: $BUDGET_TOKENS per phase
 
+Model: Prefer Opus 1M (1M context = 250+ cycles)
 Dispatch log: .planning/AUTO-DISPATCH-LOG.md
 Stop file: .planning/STOP (create to stop gracefully)
 ==================================================
@@ -142,6 +154,7 @@ Loop through phases, determining next action per phase and spawning Task agents.
 ```bash
 PHASE=$CURRENT_PHASE
 PHASE_ITERATION=1
+PHASE_TOKENS_USED=0
 
 while [ $PHASE -le $TOTAL_PHASES ] && [ $PHASES_COMPLETED -lt $MAX_PHASES ]; do
 ```
@@ -173,7 +186,14 @@ if [ -f ".planning/STOP" ]; then
 fi
 ```
 
-**3b. Determine phase status and next action:**
+**3b. Track state hash for stuck loop detection:**
+
+```bash
+# Capture STATE.md hash before action
+STATE_HASH_BEFORE=$(md5sum .planning/STATE.md 2>/dev/null | cut -d' ' -f1 || echo "none")
+```
+
+**3c. Determine phase status and next action:**
 
 Read phase directory to determine what exists:
 ```bash
@@ -225,7 +245,7 @@ else
 fi
 ```
 
-**3c. Spawn Task for action:**
+**3d. Spawn Task for action:**
 
 Print status:
 ```bash
@@ -390,6 +410,7 @@ EOF_REEXEC
     # Move to next phase
     PHASE=$((PHASE + 1))
     PHASE_ITERATION=1
+    PHASE_TOKENS_USED=0
     continue
     ;;
 
@@ -455,7 +476,7 @@ EOF_HALT
 esac
 ```
 
-**3d. Read Task result:**
+**3e. Read Task result and check budget/deadlock:**
 
 After Task returns, verify expected artifact exists:
 ```bash
@@ -490,7 +511,172 @@ case "$NEXT_ACTION" in
 esac
 ```
 
-**3e. Handle Task crash:**
+**Token budget tracking:**
+```bash
+# Estimate tokens: 4 chars = 1 token, +10k overhead per action
+TASK_CHARS=$(wc -c < "$PHASE_DIR"/*-PLAN.md 2>/dev/null | head -n1 || echo "0")
+ACTION_TOKENS=$(( (TASK_CHARS / 4) + 10000 ))
+PHASE_TOKENS_USED=$((PHASE_TOKENS_USED + ACTION_TOKENS))
+
+if [ $PHASE_TOKENS_USED -gt $BUDGET_TOKENS ]; then
+  echo ""
+  echo "=================================================="
+  echo "HALT: Token Budget Exceeded"
+  echo "=================================================="
+  echo ""
+  echo "Phase $PHASE has exceeded token budget ($BUDGET_TOKENS tokens)"
+  echo "Estimated tokens used: $PHASE_TOKENS_USED"
+  echo ""
+
+  # Write HALT.md
+  cat > "$PHASE_DIR/HALT.md" <<EOF_BUDGET_HALT
+# HALT: Token Budget Exceeded
+
+**Phase:** $PHASE ($PHASE_SLUG)
+**Budget:** $BUDGET_TOKENS tokens
+**Used:** $PHASE_TOKENS_USED tokens (estimated)
+**Halted:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+## Reason
+
+Phase has exceeded the token budget limit. This indicates:
+1. Phase is more complex than anticipated
+2. Multiple re-plan cycles consumed budget
+3. Plan files are unusually large
+
+## Budget Analysis
+
+Token budget prevents runaway costs on complex phases. Estimation:
+- 4 characters = 1 token
+- 10k tokens overhead per action (context, prompts)
+
+Estimated usage: $PHASE_TOKENS_USED tokens across $PHASE_ITERATION iteration(s)
+
+## Investigation Steps
+
+1. Check plan file sizes in $PHASE_DIR
+2. Review verification gaps (may indicate scope creep)
+3. Check iteration count (multiple re-plans indicate complexity)
+4. Consider: should this phase be split into smaller phases?
+
+## Recovery
+
+Option 1: Increase budget in .planning/config.json:
+\`\`\`json
+"agent_mode_settings": {
+  "budget_tokens_per_phase": 750000
+}
+\`\`\`
+
+Option 2: Split phase into smaller chunks and run:
+\`\`\`bash
+/gsd:auto --single-phase
+\`\`\`
+
+Option 3: Continue manually with human oversight:
+\`\`\`bash
+/gsd:execute-phase $PHASE
+\`\`\`
+EOF_BUDGET_HALT
+
+  # Log halt
+  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type "halt" \
+    --question "Phase $PHASE token budget" \
+    --decision "Halted: budget exceeded" \
+    --rationale "Estimated $PHASE_TOKENS_USED tokens used (limit: $BUDGET_TOKENS)"
+
+  exit 1
+fi
+```
+
+**Stuck loop detection:**
+```bash
+# Check if STATE.md changed
+STATE_HASH_AFTER=$(md5sum .planning/STATE.md 2>/dev/null | cut -d' ' -f1 || echo "none")
+
+if [ "$STATE_HASH_BEFORE" = "$STATE_HASH_AFTER" ]; then
+  STUCK_CYCLES=$((STUCK_CYCLES + 1))
+
+  if [ $STUCK_CYCLES -ge 3 ]; then
+    echo ""
+    echo "=================================================="
+    echo "HALT: Deadlock Detected"
+    echo "=================================================="
+    echo ""
+    echo "STATE.md unchanged for $STUCK_CYCLES consecutive cycles."
+    echo "Phase $PHASE appears stuck in a loop."
+    echo ""
+
+    # Write HALT.md
+    cat > "$PHASE_DIR/HALT.md" <<EOF_DEADLOCK_HALT
+# HALT: Deadlock Detected
+
+**Phase:** $PHASE ($PHASE_SLUG)
+**Stuck cycles:** $STUCK_CYCLES
+**Last action:** $NEXT_ACTION
+**Halted:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+## Reason
+
+STATE.md has not changed for $STUCK_CYCLES consecutive actions. This indicates:
+1. Tasks are running but not producing expected state changes
+2. Artifact detection logic may be broken
+3. Phase structure may be malformed
+4. Tasks may be failing silently
+
+## Deadlock Analysis
+
+Expected behavior: Each action should update STATE.md with progress.
+Observed: STATE.md hash unchanged across multiple cycles.
+
+Last action attempted: $NEXT_ACTION
+Phase iteration: $PHASE_ITERATION
+
+## Investigation Steps
+
+1. Check AUTO-DISPATCH-LOG.md for action results
+2. Verify artifacts exist in $PHASE_DIR
+3. Check STATE.md manually -- is it being updated?
+4. Review phase structure in ROADMAP.md
+5. Check for silent Task failures
+
+## Recovery
+
+Option 1: Fix state update logic and resume:
+\`\`\`bash
+/gsd:auto --single-phase
+\`\`\`
+
+Option 2: Manually advance phase in STATE.md and continue:
+\`\`\`bash
+# Edit STATE.md to set Phase: $((PHASE + 1))
+/gsd:auto
+\`\`\`
+
+Option 3: Investigate with manual control:
+\`\`\`bash
+/gsd:plan-phase $PHASE
+/gsd:execute-phase $PHASE
+\`\`\`
+EOF_DEADLOCK_HALT
+
+    # Log halt
+    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+      --type "halt" \
+      --question "Phase $PHASE deadlock" \
+      --decision "Halted: stuck loop detected" \
+      --rationale "STATE.md unchanged for $STUCK_CYCLES cycles (last action: $NEXT_ACTION)"
+
+    exit 1
+  fi
+else
+  # State changed -- reset stuck counter
+  STUCK_CYCLES=0
+fi
+```
+
+**3f. Handle Task crash:**
 
 If crash detected (expected artifact missing):
 ```bash
@@ -569,7 +755,7 @@ EOF_CRASH_HALT
 fi
 ```
 
-**3f. Update state after success:**
+**3g. Update state after success:**
 
 After action completes successfully:
 ```bash
@@ -584,7 +770,7 @@ echo "Action complete: $NEXT_ACTION"
 echo ""
 ```
 
-**3g. Loop:**
+**3h. Loop:**
 
 Continue to next action in phase or next phase.
 
@@ -736,5 +922,28 @@ The dispatcher accumulates context across phases but stays thin per cycle.
 - Opus 1M context window = 16% utilization
 
 **Conclusion:** Dispatcher can handle milestones up to 50+ phases without context degradation risk. The Chain-of-Agents pattern (fresh Task per action) prevents individual agents from context degradation, and the dispatcher itself stays thin.
+
+## Opus 1M Optimization
+
+**Model preference:** Opus 1M (claude-opus-4) is the preferred model for auto-dispatch sessions.
+
+**Context capacity comparison:**
+- Opus 1M: 1,000,000 tokens / 4k per cycle = 250 cycles
+- Sonnet 200k: 200,000 tokens / 4k per cycle = 50 cycles
+
+**Implications:**
+- Opus 1M: Handles 60+ phase milestones without degradation
+- Sonnet: Sufficient for milestones up to 12 phases
+- Graceful degradation: Dispatcher works on Sonnet for smaller milestones
+
+**Why Opus 1M matters:**
+1. No context degradation across long milestone runs
+2. Full conversation history preserved for debugging
+3. Allows complex multi-iteration phases without rollover
+4. AUTO-DISPATCH-LOG.md accumulates without concern
+
+**When Opus unavailable:** Dispatcher falls back to Sonnet gracefully. For large milestones (12+ phases), split into multiple /gsd:auto runs with --max-phases flag.
+
+**Usage note:** Model selection happens at Claude Code UI level. This preference is documented for users running long autonomous sessions.
 
 </context_budget>
