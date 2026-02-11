@@ -42,6 +42,12 @@ PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cu
 MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
 ```
 
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
+
 When `PARALLELIZATION=false`, plans within a wave execute sequentially.
 </step>
 
@@ -164,7 +170,18 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
    Each agent prompt:
 
+   **If AGENT_MODE=true, prepend auto_mode context:**
+
    ```
+   <auto_mode>
+   You are running in GSD agent mode. For ALL decisions:
+   - Do NOT call AskUserQuestion
+   - Use auto-decide for structured questions:
+     node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+   - For freeform questions: generate the answer from project context, then log:
+     node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+   </auto_mode>
+
    <objective>
    Execute plan {plan_number} of phase {phase_number}-{phase_name}.
    Commit each task atomically. Create SUMMARY.md. Update STATE.md.
@@ -232,6 +249,38 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
 <step name="checkpoint_handling">
 Plans with `autonomous: false` require user interaction.
+
+**If AGENT_MODE=true:**
+
+Auto-handle checkpoints based on type:
+
+**checkpoint:human-verify:**
+- Auto-approve (agent mode trusts the verification step)
+- Log decision:
+  ```bash
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Checkpoint: human-verify" --options '["Approved"]' --raw
+  ```
+- Spawn continuation agent with auto-approval context
+
+**checkpoint:decision:**
+- Use auto-decide with the checkpoint's options:
+  ```bash
+  DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[checkpoint question]" --options '[checkpoint_options_json]' --raw)
+  ```
+- Spawn continuation agent with auto-decided option
+
+**checkpoint:human-action:**
+- HALT (agent cannot perform human-only actions like email verification, 2FA codes)
+- Write HALT.md to phase directory with full context:
+  - What task was blocked
+  - What human action is needed
+  - Verification command to run after action
+- Update STATE.md with "blocked" status
+- Stop execution
+
+For auto-approved checkpoints, log the decision and spawn continuation agent immediately.
+
+**If AGENT_MODE=false (classic):**
 
 **Flow:**
 
@@ -615,6 +664,28 @@ Read status:
 grep "^status:" "$PHASE_DIR"/*-VERIFICATION.md | cut -d: -f2 | tr -d ' '
 ```
 
+**If AGENT_MODE=true:**
+
+Auto-handle verification results:
+
+**Status: passed**
+- Proceed to update_roadmap (no user interaction needed)
+
+**Status: human_needed**
+- Auto-approve (agent mode trusts automated checks):
+  ```bash
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Human verification items approved?" --options '["Approved"]' --raw
+  ```
+- Log the human verification items to AUTO-DISPATCH-LOG.md for audit trail
+- Proceed to update_roadmap
+
+**Status: gaps_found**
+- Log the gaps found to AUTO-DISPATCH-LOG.md
+- Return control to dispatcher for re-plan->re-execute cycle (dispatcher's iteration logic handles this)
+- Do NOT prompt user for action
+
+**If AGENT_MODE=false (classic):**
+
 | Status | Action |
 |--------|--------|
 | `passed` | → update_roadmap |
@@ -694,10 +765,23 @@ Orchestrator: ~10-15% context. Subagents: fresh 200k each. No polling (Task bloc
 </context_efficiency>
 
 <failure_handling>
+
+**If AGENT_MODE=true:**
+
+- **Agent fails mid-plan:** Log failure to AUTO-DISPATCH-LOG.md, update STATE.md with failure context, return structured failure result to dispatcher (dispatcher handles retry/halt per config)
+- **Dependency chain breaks:** Log chain break, return failure result to dispatcher with affected plans list
+- **All agents in wave fail:** Log systemic issue, return failure result to dispatcher (dispatcher halts with HALT.md)
+- **Checkpoint unresolvable (human-action type):** Write HALT.md to phase directory, update STATE.md with "blocked" status, return halt result to dispatcher
+
+Do NOT prompt user for decisions in agent mode -- return structured results for dispatcher consumption.
+
+**If AGENT_MODE=false (classic):**
+
 - **Agent fails mid-plan:** Missing SUMMARY.md → report, ask user how to proceed
 - **Dependency chain breaks:** Wave 1 fails → Wave 2 dependents likely fail → user chooses attempt or skip
 - **All agents in wave fail:** Systemic issue → stop, report for investigation
 - **Checkpoint unresolvable:** "Skip this plan?" or "Abort phase execution?" → record partial progress in STATE.md
+
 </failure_handling>
 
 <resumption>

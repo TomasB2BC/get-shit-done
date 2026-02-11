@@ -55,7 +55,7 @@
 
 Plans:
 - [x] 08-01-PLAN.md -- Auto-decide engine + log-decision + config schema in gsd-tools.js
-- [ ] 08-02-PLAN.md -- /gsd:auto command + auto-dispatch.md dispatcher workflow
+- [x] 08-02-PLAN.md -- /gsd:auto command + auto-dispatch.md dispatcher workflow
 - [ ] 08-03-PLAN.md -- Agent-mode branches in new-project, plan-phase, execute-phase workflows
 
 ### Phase 9: Full Command Coverage
@@ -110,10 +110,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Verification Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
 | 6. Codebase Mapping Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
 | 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
-| 8. Agent Mode Foundation | v2.0.0 | 0/3 | Planned | - |
+| 8. Agent Mode Foundation | v2.0.0 | 2/3 | In progress | - |
 | 9. Full Command Coverage | v2.0.0 | 0/? | Not started | - |
 | 10. Lead-Approval Integration | v2.0.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-11 -- Phase 8 planned (3 plans in 2 waves)*
+*Last updated: 2026-02-11 -- Phase 8 Plan 02 complete (Chain-of-Agents dispatcher)*

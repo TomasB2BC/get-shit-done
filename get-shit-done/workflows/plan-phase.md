@@ -27,6 +27,12 @@ PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resol
 CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
 ```
 
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
+
 ## 2. Parse and Normalize Arguments
 
 Extract from $ARGUMENTS: phase number (integer or decimal like `2.1`), flags (`--research`, `--skip-research`, `--gaps`, `--skip-verify`).
@@ -105,7 +111,18 @@ DECISIONS=$(grep -A20 "### Decisions Made" .planning/STATE.md 2>/dev/null)
 
 Research prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context to research prompt:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Research how to implement Phase {phase_number}: {phase_name}
 Answer: "What do I need to know to PLAN this phase well?"
@@ -130,6 +147,8 @@ IMPORTANT: If CONTEXT.md exists below, it contains user decisions from /gsd:disc
 Write to: {phase_dir}/{phase}-RESEARCH.md
 </output>
 ```
+
+**If AGENT_MODE=false, use research prompt without auto_mode context.**
 
 ### Detect Orchestration Mode
 
@@ -411,7 +430,18 @@ Display banner:
 
 Planner prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <planning_context>
 **Phase:** {phase_number}
 **Mode:** {standard | gap_closure}
@@ -485,7 +515,18 @@ PLANS_CONTENT=$(cat "${PHASE_DIR}"/*-PLAN.md 2>/dev/null)
 
 Checker prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <verification_context>
 **Phase:** {phase_number}
 **Phase Goal:** {goal from ROADMAP}
