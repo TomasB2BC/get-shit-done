@@ -25,6 +25,12 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
 CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
 ```
+
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
 </step>
 
 <step name="check_active_session">
@@ -34,7 +40,37 @@ CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resol
 find .planning/phases -name "*-UAT.md" -type f 2>/dev/null | head -5
 ```
 
-**If active sessions exist AND no $ARGUMENTS provided:**
+**If AGENT_MODE=true AND active sessions exist AND no $ARGUMENTS:**
+
+Auto-select session with most pending tests:
+
+```bash
+ACTIVE_SESSIONS=$(find .planning/phases -name "*-UAT.md" -type f 2>/dev/null)
+if [ -n "$ACTIVE_SESSIONS" ] && [ -z "$ARGUMENTS" ]; then
+  # Count pending tests per session
+  MAX_PENDING=0
+  SELECTED_SESSION=""
+  for session in $ACTIVE_SESSIONS; do
+    PENDING=$(grep -c "result: \[pending\]" "$session" 2>/dev/null || echo "0")
+    if [ "$PENDING" -gt "$MAX_PENDING" ]; then
+      MAX_PENDING=$PENDING
+      SELECTED_SESSION="$session"
+    fi
+  done
+
+  # Log auto-selection
+  PHASE=$(basename "$SELECTED_SESSION" | sed 's/-UAT.md//')
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Select UAT session to resume" \
+    --decision "$PHASE ($MAX_PENDING pending tests)" \
+    --rationale "Session with most pending tests (auto-selected in agent mode)"
+
+  # Load that file, go to resume_from_file
+fi
+```
+
+**If AGENT_MODE=false (classic) AND active sessions exist AND no $ARGUMENTS provided:**
 
 Read each file's frontmatter (status, phase) and Current Test section.
 
@@ -170,7 +206,86 @@ Proceed to `present_test`.
 </step>
 
 <step name="present_test">
-**Present current test to user:**
+**If AGENT_MODE=true:**
+
+Auto-assess current test programmatically:
+
+```bash
+# Read test from UAT file
+TEST_NUMBER=$(sed -n '/^## Current Test/,/^## /p' "$UAT_FILE" | grep "^number:" | cut -d: -f2 | tr -d ' ')
+TEST_NAME=$(sed -n '/^## Current Test/,/^## /p' "$UAT_FILE" | grep "^name:" | cut -d: -f2-)
+TEST_EXPECTED=$(sed -n '/^## Current Test/,/^## /p' "$UAT_FILE" | sed -n '/^expected:/,/^awaiting:/p' | grep -v "^expected:" | grep -v "^awaiting:")
+
+# Determine if test is programmatically verifiable
+IS_VERIFIABLE=false
+VERIFICATION_RESULT=""
+VERIFICATION_EVIDENCE=""
+
+# Check if test involves API, file existence, grep-checkable output
+if echo "$TEST_EXPECTED" | grep -qi "API returns\|file exists\|endpoint\|status code\|log contains\|database\|query"; then
+  IS_VERIFIABLE=true
+
+  # Run automated check based on test type
+  # Example checks (orchestrator implements specific logic):
+  # - API test: curl and check status/response
+  # - File test: check file existence
+  # - Log test: grep log files
+  # - Database test: query and verify
+
+  # If check passes definitively:
+  VERIFICATION_RESULT="PASS"
+  VERIFICATION_EVIDENCE="[Evidence from automated check]"
+
+  # If check fails definitively:
+  # VERIFICATION_RESULT="FAIL"
+  # VERIFICATION_EVIDENCE="[Failure evidence]"
+fi
+
+# Check if test requires human judgment
+if echo "$TEST_EXPECTED" | grep -qi "visual\|UI\|user experience\|UX\|interactive\|click\|navigate\|appearance\|layout\|design"; then
+  IS_VERIFIABLE=false
+fi
+
+# Process result
+if [ "$IS_VERIFIABLE" = "true" ] && [ "$VERIFICATION_RESULT" = "PASS" ]; then
+  # Update test as PASS with evidence
+  # Update UAT.md Tests section
+  # Log decision
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Test $TEST_NUMBER: $TEST_NAME" \
+    --decision "PASS" \
+    --rationale "Automated check confirmed: $VERIFICATION_EVIDENCE"
+
+elif [ "$IS_VERIFIABLE" = "true" ] && [ "$VERIFICATION_RESULT" = "FAIL" ]; then
+  # Update test as FAIL with evidence
+  # Update UAT.md Tests section and Gaps
+  # Log decision
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Test $TEST_NUMBER: $TEST_NAME" \
+    --decision "FAIL" \
+    --rationale "Automated check failed: $VERIFICATION_EVIDENCE"
+
+else
+  # Mark as SKIPPED - requires human assessment
+  # Update UAT.md Tests section
+  # Log decision
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Test $TEST_NUMBER: $TEST_NAME" \
+    --decision "SKIPPED" \
+    --rationale "Requires human assessment (visual/UX/interactive test)"
+fi
+
+# Update UAT.md and continue to next test
+```
+
+**Conservative principle:** Only PASS when check definitively confirms. Ambiguous cases mark as SKIPPED for human review.
+
+**If AGENT_MODE=false (classic):**
+
+Present current test to user.
 
 Read Current Test section from UAT file.
 
@@ -360,6 +475,16 @@ Spawn gsd-planner in --gaps mode:
 ```
 Task(
   prompt="""
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <planning_context>
 
 **Phase:** {phase_number}
@@ -411,6 +536,16 @@ Spawn gsd-plan-checker:
 ```
 Task(
   prompt="""
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <verification_context>
 
 **Phase:** {phase_number}
@@ -450,6 +585,16 @@ Spawn gsd-planner with revision context:
 ```
 Task(
   prompt="""
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <revision_context>
 
 **Phase:** {phase_number}
@@ -480,6 +625,33 @@ Increment iteration_count
 **If iteration_count >= 3:**
 
 Display: `Max iterations reached. {N} issues remain.`
+
+**If AGENT_MODE=true:**
+
+Auto-decide action (default: Force proceed):
+
+```bash
+DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Max revision iterations reached. Force proceed or abandon?" --options '["Force proceed","Abandon"]' --raw)
+
+if [ "$DECISION" = "Force proceed" ]; then
+  # Log and continue to present_ready
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Revision loop max iterations" \
+    --decision "Force proceed with $N unresolved issues" \
+    --rationale "Auto-decided to proceed (max iterations reached)"
+else
+  # Log and exit
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Revision loop max iterations" \
+    --decision "Abandoned gap closure" \
+    --rationale "Auto-decided to abandon after max iterations"
+  exit 1
+fi
+```
+
+**If AGENT_MODE=false (classic):**
 
 Offer options:
 1. Force proceed (execute despite issues)
