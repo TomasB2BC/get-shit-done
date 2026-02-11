@@ -303,6 +303,7 @@ When true: workflows check for agent_mode and use auto-decide at each AskUserQue
 | auto_scope | string | "conservative" | Scoping aggressiveness: "conservative" (table stakes only) or "comprehensive" (include differentiators) |
 | max_phases | number or null | null | Maximum phases per /gsd:auto run. null = full milestone loop |
 | max_iterations_per_phase | number | 3 | Max plan-execute-verify cycles before halting |
+| budget_tokens_per_phase | number | 500000 | Maximum estimated tokens per phase before halt |
 
 **Reading agent_mode:**
 

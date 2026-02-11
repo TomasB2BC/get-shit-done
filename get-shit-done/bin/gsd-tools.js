@@ -57,6 +57,7 @@ function loadConfig(cwd) {
       auto_scope: 'conservative',
       max_phases: null,
       max_iterations_per_phase: 3,
+      budget_tokens_per_phase: 500000,
     },
   };
 
@@ -85,6 +86,7 @@ function loadConfig(cwd) {
         auto_scope: settings.auto_scope ?? defaults.agent_mode_settings.auto_scope,
         max_phases: settings.max_phases ?? defaults.agent_mode_settings.max_phases,
         max_iterations_per_phase: settings.max_iterations_per_phase ?? defaults.agent_mode_settings.max_iterations_per_phase,
+        budget_tokens_per_phase: settings.budget_tokens_per_phase ?? defaults.agent_mode_settings.budget_tokens_per_phase,
       };
     })();
 
@@ -372,6 +374,10 @@ function cmdStateLoad(cwd, raw) {
       `plan_checker=${c.plan_checker}`,
       `verifier=${c.verifier}`,
       `agent_mode=${c.agent_mode}`,
+      `auto_scope=${c.agent_mode_settings.auto_scope}`,
+      `max_phases=${c.agent_mode_settings.max_phases}`,
+      `max_iterations_per_phase=${c.agent_mode_settings.max_iterations_per_phase}`,
+      `budget_tokens_per_phase=${c.agent_mode_settings.budget_tokens_per_phase}`,
       `config_exists=${configExists}`,
       `roadmap_exists=${roadmapExists}`,
       `state_exists=${stateExists}`,
