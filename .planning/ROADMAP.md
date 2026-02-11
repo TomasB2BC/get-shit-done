@@ -54,7 +54,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Auto-decide engine + log-decision + config schema in gsd-tools.js
+- [x] 08-01-PLAN.md -- Auto-decide engine + log-decision + config schema in gsd-tools.js
 - [ ] 08-02-PLAN.md -- /gsd:auto command + auto-dispatch.md dispatcher workflow
 - [ ] 08-03-PLAN.md -- Agent-mode branches in new-project, plan-phase, execute-phase workflows
 
