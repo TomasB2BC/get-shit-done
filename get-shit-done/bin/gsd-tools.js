@@ -52,6 +52,12 @@ function loadConfig(cwd) {
     plan_checker: true,
     verifier: true,
     parallelization: true,
+    agent_mode: false,
+    agent_mode_settings: {
+      auto_scope: 'conservative',
+      max_phases: null,
+      max_iterations_per_phase: 3,
+    },
   };
 
   try {
@@ -73,6 +79,15 @@ function loadConfig(cwd) {
       return defaults.parallelization;
     })();
 
+    const agentModeSettings = (() => {
+      const settings = parsed.agent_mode_settings || {};
+      return {
+        auto_scope: settings.auto_scope ?? defaults.agent_mode_settings.auto_scope,
+        max_phases: settings.max_phases ?? defaults.agent_mode_settings.max_phases,
+        max_iterations_per_phase: settings.max_iterations_per_phase ?? defaults.agent_mode_settings.max_iterations_per_phase,
+      };
+    })();
+
     return {
       model_profile: get('model_profile') ?? defaults.model_profile,
       commit_docs: get('commit_docs', { section: 'planning', field: 'commit_docs' }) ?? defaults.commit_docs,
@@ -84,6 +99,8 @@ function loadConfig(cwd) {
       plan_checker: get('plan_checker', { section: 'workflow', field: 'plan_check' }) ?? defaults.plan_checker,
       verifier: get('verifier', { section: 'workflow', field: 'verifier' }) ?? defaults.verifier,
       parallelization,
+      agent_mode: parsed.agent_mode ?? defaults.agent_mode,
+      agent_mode_settings: agentModeSettings,
     };
   } catch {
     return defaults;
@@ -144,6 +161,44 @@ function output(result, raw, rawValue) {
 function error(message) {
   process.stderr.write('Error: ' + message + '\n');
   process.exit(1);
+}
+
+function logAutoDecision(cwd, entry) {
+  const logPath = path.join(cwd, '.planning', 'AUTO-DISPATCH-LOG.md');
+
+  let content = '';
+  try {
+    content = fs.readFileSync(logPath, 'utf-8');
+  } catch {
+    // Create new log file with header
+    content = '# Auto-Dispatch Log\n\n**Started:** ' + new Date().toISOString() + '\n\n## Decisions\n\n';
+  }
+
+  // Tiered verbosity per CONTEXT.md locked decision:
+  // compact one-liners for standard rule-based, verbose for synthetic/skipped
+  let logEntry;
+  if (entry.synthetic || entry.decision === null) {
+    // Verbose format for synthetic and skipped decisions
+    logEntry = '### ' + (entry.synthetic ? 'SYNTHETIC' : 'SKIPPED') + ': ' + entry.type.toUpperCase() + '\n' +
+      '[' + entry.timestamp + '] ' + entry.type.toUpperCase() + ': "' + entry.question + '"\n' +
+      '  Decision: ' + (entry.decision || '(skipped)') + '\n' +
+      '  Rationale: ' + entry.rationale + '\n\n';
+  } else {
+    // Compact one-liner for rule-based decisions
+    logEntry = '[' + entry.timestamp + '] ' + entry.type.toUpperCase() + ': "' + entry.question + '" -> "' +
+      (typeof entry.decision === 'string' ? entry.decision : JSON.stringify(entry.decision)) +
+      '" (' + entry.rationale + ')\n';
+  }
+
+  // Insert before Summary section if it exists, otherwise append
+  const summaryIdx = content.indexOf('## Summary');
+  if (summaryIdx >= 0) {
+    content = content.slice(0, summaryIdx) + logEntry + '\n' + content.slice(summaryIdx);
+  } else {
+    content += logEntry;
+  }
+
+  fs.writeFileSync(logPath, content, 'utf-8');
 }
 
 // ─── Commands ─────────────────────────────────────────────────────────────────
@@ -316,6 +371,7 @@ function cmdStateLoad(cwd, raw) {
       `research=${c.research}`,
       `plan_checker=${c.plan_checker}`,
       `verifier=${c.verifier}`,
+      `agent_mode=${c.agent_mode}`,
       `config_exists=${configExists}`,
       `roadmap_exists=${roadmapExists}`,
       `state_exists=${stateExists}`,
@@ -556,6 +612,129 @@ function cmdVerifySummary(cwd, summaryPath, checkFileCount, raw) {
   output(result, raw, passed ? 'passed' : 'failed');
 }
 
+function cmdAutoDecide(cwd, questionType, question, options, context, raw) {
+  if (!questionType || !question) {
+    error('type and question required for auto-decide');
+  }
+
+  const config = loadConfig(cwd);
+  const agentSettings = config.agent_mode_settings || {};
+  const autoScope = agentSettings.auto_scope || 'conservative';
+
+  let decision;
+  let rationale;
+  let synthetic = false;
+  let needsAgentSynthesis = false;
+  let optionIndex = 0;
+
+  const optionsList = options ? (typeof options === 'string' ? JSON.parse(options) : options) : [];
+
+  switch (questionType) {
+    case 'scope':
+      optionIndex = autoScope === 'comprehensive' ? Math.min(1, optionsList.length - 1) : 0;
+      decision = optionsList[optionIndex] || optionsList[0];
+      rationale = 'Scoping rule (auto_scope=' + autoScope + ')';
+      break;
+
+    case 'approval':
+      decision = optionsList[0] || 'Approve';
+      rationale = 'Auto-approve (no failure indicators)';
+      break;
+
+    case 'research':
+      const researchYes = optionsList.findIndex(function(o) {
+        const label = typeof o === 'string' ? o : (o.label || '');
+        return /research|yes|recommended/i.test(label);
+      });
+      optionIndex = researchYes >= 0 ? researchYes : 0;
+      decision = optionsList[optionIndex];
+      rationale = 'Always research in agent mode';
+      break;
+
+    case 'binary':
+      optionIndex = 0;
+      decision = optionsList[0];
+      rationale = 'Binary: selected recommended option (first)';
+      break;
+
+    case 'multiSelect':
+      if (autoScope === 'comprehensive') {
+        decision = optionsList;
+      } else {
+        decision = optionsList.filter(function(o) {
+          const label = typeof o === 'string' ? o : (o.label || '');
+          return !/none|skip|defer/i.test(label);
+        });
+        if (decision.length === 0) decision = [optionsList[0]];
+      }
+      rationale = 'Multi-select (auto_scope=' + autoScope + ')';
+      break;
+
+    case 'freeform':
+      decision = null;
+      needsAgentSynthesis = true;
+      rationale = 'Freeform question requires LLM synthesis';
+      break;
+
+    default:
+      optionIndex = 0;
+      decision = optionsList[0] || null;
+      rationale = 'Default rule: first option for unknown type "' + questionType + '"';
+  }
+
+  // Validate option index bounds (structured types only)
+  if (!needsAgentSynthesis && optionsList.length > 0) {
+    if (optionIndex >= optionsList.length) {
+      optionIndex = 0;
+      decision = optionsList[0];
+      rationale += ' (FALLBACK: option index out of bounds)';
+    }
+  }
+
+  // Log structured decisions (freeform logged by workflow after synthesis)
+  if (!needsAgentSynthesis) {
+    logAutoDecision(cwd, {
+      timestamp: new Date().toISOString(),
+      type: questionType,
+      question: question,
+      decision: decision,
+      optionIndex: optionIndex,
+      rationale: rationale,
+      synthetic: false,
+    });
+  }
+
+  const result = {
+    decision: decision,
+    option_index: optionIndex,
+    rationale: rationale,
+    synthetic: synthetic,
+    needs_agent_synthesis: needsAgentSynthesis,
+    logged: !needsAgentSynthesis,
+  };
+
+  const rawValue = needsAgentSynthesis ? 'NEEDS_SYNTHESIS' : (typeof decision === 'string' ? decision : JSON.stringify(decision));
+  output(result, raw, rawValue);
+}
+
+function cmdLogDecision(cwd, decisionType, question, decision, rationale, raw) {
+  if (!decisionType || !question || decision === undefined || !rationale) {
+    error('type, question, decision, and rationale required for log-decision');
+  }
+
+  logAutoDecision(cwd, {
+    timestamp: new Date().toISOString(),
+    type: decisionType,
+    question: question,
+    decision: decision,
+    rationale: rationale,
+    synthetic: true,
+  });
+
+  const result = { logged: true };
+  output(result, raw, 'logged');
+}
+
 // ─── CLI Router ───────────────────────────────────────────────────────────────
 
 function main() {
@@ -568,7 +747,7 @@ function main() {
   const cwd = process.cwd();
 
   if (!command) {
-    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, commit, verify-summary, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
+    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
   }
 
   switch (command) {
@@ -631,6 +810,38 @@ function main() {
 
     case 'config-ensure-section': {
       cmdConfigEnsureSection(cwd, raw);
+      break;
+    }
+
+    case 'auto-decide': {
+      // Parse arguments: --type <type> --question <question> [--options '<json>'] [--context '<json>']
+      const typeIndex = args.indexOf('--type');
+      const questionIndex = args.indexOf('--question');
+      const optionsIndex = args.indexOf('--options');
+      const contextIndex = args.indexOf('--context');
+
+      const questionType = typeIndex !== -1 ? args[typeIndex + 1] : null;
+      const question = questionIndex !== -1 ? args[questionIndex + 1] : null;
+      const options = optionsIndex !== -1 ? args[optionsIndex + 1] : null;
+      const context = contextIndex !== -1 ? args[contextIndex + 1] : null;
+
+      cmdAutoDecide(cwd, questionType, question, options, context, raw);
+      break;
+    }
+
+    case 'log-decision': {
+      // Parse arguments: --type <type> --question <question> --decision <decision> --rationale <rationale>
+      const typeIndex = args.indexOf('--type');
+      const questionIndex = args.indexOf('--question');
+      const decisionIndex = args.indexOf('--decision');
+      const rationaleIndex = args.indexOf('--rationale');
+
+      const decisionType = typeIndex !== -1 ? args[typeIndex + 1] : null;
+      const question = questionIndex !== -1 ? args[questionIndex + 1] : null;
+      const decision = decisionIndex !== -1 ? args[decisionIndex + 1] : null;
+      const rationale = rationaleIndex !== -1 ? args[rationaleIndex + 1] : null;
+
+      cmdLogDecision(cwd, decisionType, question, decision, rationale, raw);
       break;
     }
 

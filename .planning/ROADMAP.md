@@ -3,188 +3,117 @@
 **Created:** 2026-02-06
 **Core Value:** Every GSD command works in both classic and hybrid mode
 
-## Milestone: v1.12.0-hybrid
+## Milestones
 
-### Phase 1: Configuration Foundation
-**Goal:** Config infrastructure supports orchestration mode toggling
-**Requirements:** CFG-01, CFG-02, CFG-03, CFG-04
-**Plans:** 3 plans
+- [x] **v1.12.0-hybrid** -- Phases 1-7 (shipped 2026-02-08) | [Archive](milestones/v1.12.0-hybrid-ROADMAP.md)
+- [ ] **v2.0.0-agent-mode** -- Phases 8-10 (in progress)
 
-**Status:** Complete (2026-02-07)
+## Phases
 
-Plans:
-- [x] 01-01-PLAN.md -- Config schema and detection pattern documentation (planning-config.md)
-- [x] 01-02-PLAN.md -- Settings UI with orchestration and agent_teams toggles (settings.md)
-- [x] 01-03-PLAN.md -- Config template consistency (new-project.md, set-profile.md)
+<details>
+<summary>[x] v1.12.0-hybrid (Phases 1-7) -- SHIPPED 2026-02-08</summary>
 
-**Success Criteria:**
-1. config.json accepts `orchestration` and `agent_teams` fields without breaking existing configs
-2. /gsd:settings displays orchestration mode and allows toggling
-3. Detection logic correctly reads config + env var combination
-4. Existing GSD projects with no orchestration field default to "classic"
+- [x] Phase 1: Configuration Foundation (3/3 plans) -- completed 2026-02-07
+- [x] Phase 2: Project Research Hybrid (2/2 plans) -- completed 2026-02-08
+- [x] Phase 3: Phase Research Hybrid (4/4 plans) -- completed 2026-02-08
+- [x] Phase 4: Debug Hybrid (2/2 plans) -- completed 2026-02-08
+- [x] Phase 5: Verification Hybrid (2/2 plans) -- completed 2026-02-08
+- [x] Phase 6: Codebase Mapping Hybrid (2/2 plans) -- completed 2026-02-08
+- [x] Phase 7: Fallback and Integration Testing (1/1 plan) -- completed 2026-02-08
 
-### Phase 2: Project Research Hybrid (new-project.md)
-**Goal:** 4 parallel researchers use Agent Teams for collaborative research with debate
-**Requirements:** RES-01, RES-02, RES-03, RES-04, AGT-01
-**Plans:** 2 plans
+</details>
 
-**Status:** Complete (2026-02-08)
-
-Plans:
-- [x] 02-01-PLAN.md -- Add teammate-mode instructions to gsd-project-researcher.md (AGT-01)
-- [x] 02-02-PLAN.md -- Add hybrid branch to new-project.md Phase 6 (RES-01, RES-02, RES-03, RES-04)
-
-**Success Criteria:**
-1. In hybrid mode, `new-project.md` Phase 6 creates an Agent Team with 4 researcher teammates
-2. Researchers message each other to challenge and validate findings
-3. Team lead produces SUMMARY.md (no separate synthesizer needed)
-4. Output files (STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md, SUMMARY.md) identical in format
-5. Classic mode still spawns 4 Task subagents + synthesizer as before
-
-### Phase 3: Phase Research Hybrid (plan-phase.md)
-**Goal:** Phase research uses debate-style Agent Team (optimist + devil's advocate + explorer)
-**Requirements:** RES-05, RES-06, AGT-02
-**Plans:** 3 plans
-
-**Status:** Complete (2026-02-08)
-**Plans:** 4 plans
-
-Plans:
-- [x] 03-01-PLAN.md -- Add teammate-mode instructions to gsd-phase-researcher.md (AGT-02)
-- [x] 03-02-PLAN.md -- Add hybrid branch to plan-phase.md Step 5 (RES-05)
-- [x] 03-03-PLAN.md -- Add hybrid branch to research-phase.md Step 4 (RES-06)
-- [x] 03-04-PLAN.md -- Fix 3 protocol gaps: Round 2 peer-to-peer, shutdown type, perspective file prefixes (gap closure)
-
-**Success Criteria:**
-1. plan-phase.md Step 5 spawns 3-teammate debate team in hybrid mode
-2. research-phase.md standalone command also supports hybrid
-3. RESEARCH.md output contains multiple perspectives (not just one viewpoint)
-4. Classic mode still spawns single Task researcher
-
-### Phase 4: Debug Hybrid (debug.md)
-**Goal:** Debugging uses competing hypotheses pattern via Agent Teams
-**Requirements:** DBG-01, DBG-02, DBG-03, DBG-04, AGT-03
-**Plans:** 2 plans
-
-**Status:** Complete (2026-02-08)
-
-Plans:
-- [x] 04-01-PLAN.md -- Add teammate-mode instructions to gsd-debugger.md (AGT-03)
-- [x] 04-02-PLAN.md -- Add hybrid branch to debug.md Step 3 (DBG-01, DBG-02, DBG-03, DBG-04)
-
-**Success Criteria:**
-1. debug.md Step 3 spawns 3 hypothesis-testing teammates
-2. Teammates actively disprove each other's theories via messages
-3. Team converges on root cause through debate
-4. Debug session file format unchanged
-5. Classic mode still spawns single Task debugger
-
-### Phase 5: Verification Hybrid (execute-phase.md)
-**Goal:** Phase verification uses adversarial Agent Team (validator + breaker + reviewer)
-**Requirements:** VER-01, VER-02, VER-03, VER-04, AGT-04
-**Plans:** 2 plans
-
-**Status:** Complete (2026-02-08)
-
-Plans:
-- [x] 05-01-PLAN.md -- Add teammate-mode instructions to gsd-verifier.md (AGT-04)
-- [x] 05-02-PLAN.md -- Add hybrid branch to execute-phase.md verify_phase_goal step (VER-01, VER-02, VER-03, VER-04)
-
-**Success Criteria:**
-1. execute-phase.md Step 7 spawns 3-teammate adversarial team
-2. Breaker teammate actively hunts for stubs and broken wiring
-3. Validator and reviewer provide different verification lenses
-4. VERIFICATION.md format identical
-5. Classic mode still spawns single Task verifier
-
-### Phase 6: Codebase Mapping Hybrid (map-codebase.md)
-**Goal:** Codebase mapping uses collaborative Agent Team for cross-referenced analysis
-**Requirements:** MAP-01, MAP-02, MAP-03, AGT-05
-**Plans:** 2 plans
-
-**Status:** Complete (2026-02-08)
-
-Plans:
-- [x] 06-01-PLAN.md -- Add teammate-mode instructions to gsd-codebase-mapper.md (AGT-05)
-- [x] 06-02-PLAN.md -- Add hybrid branch to map-codebase.md spawn_agents step (MAP-01, MAP-02, MAP-03)
-
-**Success Criteria:**
-1. map-codebase.md spawn_agents step spawns 4 collaborative mapper teammates [DONE]
-2. Mappers cross-reference findings (tech informs quality, arch informs concerns) [DONE]
-3. All 7 codebase documents produced in same format [DONE]
-4. Classic mode still spawns 4 Task mappers [DONE]
-
-### Phase 7: Fallback and Integration Testing
-**Goal:** Validate classic mode unbroken, hybrid fallback works, output contracts match
-**Requirements:** FBK-01, FBK-02, FBK-03, FBK-04
-**Plans:** 1 plan
-
-**Status:** Complete (2026-02-08)
-
-Plans:
-- [x] 07-01-PLAN.md -- Static verification of all 6 workflows, 5 agents, config files, and cross-workflow integration (FBK-01, FBK-02, FBK-03, FBK-04)
-
-**Success Criteria:**
-1. Full GSD workflow runs in classic mode with zero behavior changes [DONE]
-2. Hybrid mode falls back gracefully when Agent Teams env var not set [DONE]
-3. Side-by-side output comparison shows identical file structures [DONE]
-4. All existing GSD tests pass (if any exist) [DONE]
-
----
-
-## Milestone: v2.0.0-agent-mode (Future -- after v1.12.0-hybrid)
+### v2.0.0-agent-mode (Current)
 
 > Full design doc: AGENT-MODE-GSD.md
 > Prerequisite: Phases 1-7 complete (hybrid integration working)
-> Effort estimate: 13-18 sessions across 4 phases
+> Effort estimate: 8-13 sessions across 3 phases
+
+**Milestone Goal:** GSD commands run end-to-end without human input when in agent mode
+
+- [ ] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
+- [ ] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
+- [ ] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
+
+## Phase Details
 
 ### Phase 8: Agent Mode Foundation
-**Goal:** A single GSD command runs start-to-finish without human input
-**Effort:** 2-3 sessions
-**Key work:**
-- agent_mode config field + auto-decision function
-- Replace AskUserQuestion with rule-based auto-decisions
-- Proof of concept on plan-phase + execute-phase
-- Safety limits (max iterations, token budget)
+**Goal:** Prove Chain-of-Agents dispatcher and auto-decision engine work on core workflows
+
+**Depends on:** Phase 7 (hybrid integration complete)
+
+**Requirements:** AUTO-01, AUTO-02, AUTO-03, AUTO-04, AUTO-05, AUTO-06, DISP-01, DISP-02, DISP-03, DISP-04, DISP-05, DISP-06, CMD-01, CMD-02, CMD-03
+
+**Success Criteria** (what must be TRUE):
+1. User can run /gsd:auto command which reads STATE.md and dispatches next action autonomously
+2. Auto-dispatch spawns fresh Task per phase (Chain-of-Agents), completes 3-phase test without context degradation
+3. Config has agent_mode field that toggles agent-mode on/off (defaults to false, preserving classic behavior)
+4. New-project, plan-phase, and execute-phase workflows have agent-mode branches that call auto-decide instead of AskUserQuestion
+5. AUTO-DISPATCH-LOG.md captures every auto-decision with rationale for audit trail
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Auto-decide engine + log-decision + config schema in gsd-tools.js
+- [ ] 08-02-PLAN.md -- /gsd:auto command + auto-dispatch.md dispatcher workflow
+- [ ] 08-03-PLAN.md -- Agent-mode branches in new-project, plan-phase, execute-phase workflows
 
 ### Phase 9: Full Command Coverage
-**Goal:** All GSD commands support agent mode
-**Effort:** 3-5 sessions
-**Key work:**
-- Agent-mode branches in all 27 commands
-- Edge case handling for auto-scoping
-- Full new-project -> plan -> execute -> verify cycle without human input
+**Goal:** Extend agent-mode to all workflows with safety limits preventing runaway loops and cost spirals
+
+**Depends on:** Phase 8 (foundation proven)
+
+**Requirements:** CMD-04, CMD-05, CMD-06, CMD-07, DISP-07
+
+**Success Criteria** (what must be TRUE):
+1. New-milestone, debug, map-codebase, and verify-work workflows have agent-mode branches
+2. Auto-decide handles all decision types across 7 workflows (research depth, gap closure, verification approval, milestone scope)
+3. Safety limits prevent runaway loops (max 3 plan-execute-verify iterations per phase, 500k token budget per phase enforced)
+4. Full milestone test completes 5-7 phases autonomously without human intervention or budget overruns
+5. Dispatcher uses Opus 1M context when available (model selection in Task spawning), degrades gracefully to Sonnet
+
+**Plans:** TBD (estimated 3-5 plans during phase planning)
+
+Plans:
+- [ ] 09-01: [TBD during planning]
 
 ### Phase 10: Lead-Approval Integration
-**Goal:** Agent Teams lead acts as approval authority for teammate GSD pipelines
-**Effort:** 3-5 sessions
-**Key work:**
-- Checkpoint routing: teammate sends to lead instead of human
-- Lead review/response mechanism
-- Timeout handling
-- Full Agent Teams workflow with GSD agent mode on teammates
+**Goal:** Add human oversight for architectural decisions without blocking operational automation
 
-### Phase 11: Recursive GSD (stretch)
-**Goal:** Teammates run full GSD pipelines that spawn their own Task subagents
-**Effort:** 5+ sessions
-**Key work:**
-- Three-level depth: lead -> teammate (GSD) -> Task executor
-- Token budget management across levels
-- Deadlock prevention
-- Multi-feature parallel development with per-teammate GSD
+**Depends on:** Phase 9 (full coverage working)
 
-### Opus 1M Context Note
-With Opus 1M tokens, the /clear-between-phases pattern becomes optional.
-A single teammate could run Phases 1-3 of a project in one context window.
-This reduces coordination overhead significantly and makes agent-mode GSD
-more viable. Cost tradeoff: fewer sessions needed, higher per-session cost.
+**Requirements:** LEAD-01, LEAD-02, LEAD-03, LEAD-04, LEAD-05, LEAD-06
 
----
+**Success Criteria** (what must be TRUE):
+1. Auto-decide classifies decisions as architectural vs operational using defined taxonomy
+2. Architectural decisions route to team lead via SendMessage with context, options, and recommendation
+3. Lead can approve or reject via message response; agent continues with approval or revises based on feedback
+4. Timeout handling works (1 hour default) -- uses agent recommendation if no lead response received
+5. Config has autonomy_level field with 3 settings (auto-decide, lead-approval, full-auto); lead-approval only active when agent_mode=true AND autonomy_level=lead-approval
 
-**Coverage (v1):** 28/28 v1 requirements mapped to Phases 1-7
-**Coverage (v2):** Agent mode design documented in AGENT-MODE-GSD.md
-**Phases:** 7 (v1) + 4 (v2 future)
+**Plans:** TBD (estimated 3-5 plans during phase planning)
+
+Plans:
+- [ ] 10-01: [TBD during planning]
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|---------------|--------|-----------|
+| 1. Configuration Foundation | v1.12.0 | 3/3 | Complete | 2026-02-07 |
+| 2. Project Research Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
+| 3. Phase Research Hybrid | v1.12.0 | 4/4 | Complete | 2026-02-08 |
+| 4. Debug Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
+| 5. Verification Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
+| 6. Codebase Mapping Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
+| 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
+| 8. Agent Mode Foundation | v2.0.0 | 0/3 | Planned | - |
+| 9. Full Command Coverage | v2.0.0 | 0/? | Not started | - |
+| 10. Lead-Approval Integration | v2.0.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-08 after Phase 7 execution complete -- v1.12.0-hybrid milestone COMPLETE*
+*Last updated: 2026-02-11 -- Phase 8 planned (3 plans in 2 waves)*
