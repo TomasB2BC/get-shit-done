@@ -26,6 +26,12 @@ Documents are reference material for Claude when planning/executing. Always incl
 ```bash
 MAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-codebase-mapper --raw)
 ```
+
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
 </step>
 
 <step name="check_existing">
@@ -37,6 +43,19 @@ CODEBASE_MAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js
 ```
 
 **If exists:**
+
+**If AGENT_MODE=true:**
+
+Auto-decide refresh vs skip:
+
+```bash
+DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Codebase map exists. Refresh?" --options '["Refresh - Remap codebase","Skip - Use existing"]' --raw)
+```
+
+If "Refresh": Delete .planning/codebase/, continue to create_structure
+If "Skip": Exit workflow
+
+**If AGENT_MODE=false (classic):**
 
 ```
 .planning/codebase/ already exists with these documents:
@@ -128,10 +147,30 @@ If TeamCreate fails, display warning and set FALLBACK_TO_CLASSIC=true:
 
 **Step M2: Spawn 4 mapper teammates**
 
-Spawn all 4 in parallel using Task with team_name and name parameters:
+Spawn all 4 in parallel using Task with team_name and name parameters.
+
+**Prepend auto_mode context if AGENT_MODE=true:**
 
 ```
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+AUTO_MODE_CONTEXT=""
+if [ "$AGENT_MODE" = "true" ]; then
+  AUTO_MODE_CONTEXT="<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
+"
+fi
+```
+
+**Spawn teammates with auto_mode context prepended:**
+
+```
+Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -154,7 +193,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="tech"
 )
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -177,7 +216,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="arch"
 )
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -200,7 +239,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="quality"
 )
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -343,6 +382,24 @@ Use Task tool with `subagent_type="gsd-codebase-mapper"`, `model="{mapper_model}
 
 **CRITICAL:** Use the dedicated `gsd-codebase-mapper` agent, NOT `Explore`. The mapper agent writes documents directly.
 
+**Prepend auto_mode context if AGENT_MODE=true:**
+
+```
+AUTO_MODE_CONTEXT=""
+if [ "$AGENT_MODE" = "true" ]; then
+  AUTO_MODE_CONTEXT="<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
+"
+fi
+```
+
 **Agent 1: Tech Focus**
 
 Task tool parameters:
@@ -355,7 +412,7 @@ description: "Map codebase tech stack"
 
 Prompt:
 ```
-Focus: tech
+${AUTO_MODE_CONTEXT}Focus: tech
 
 Analyze this codebase for technology stack and external integrations.
 
@@ -378,7 +435,7 @@ description: "Map codebase architecture"
 
 Prompt:
 ```
-Focus: arch
+${AUTO_MODE_CONTEXT}Focus: arch
 
 Analyze this codebase architecture and directory structure.
 
@@ -401,7 +458,7 @@ description: "Map codebase conventions"
 
 Prompt:
 ```
-Focus: quality
+${AUTO_MODE_CONTEXT}Focus: quality
 
 Analyze this codebase for coding conventions and testing patterns.
 
@@ -424,7 +481,7 @@ description: "Map codebase concerns"
 
 Prompt:
 ```
-Focus: concerns
+${AUTO_MODE_CONTEXT}Focus: concerns
 
 Analyze this codebase for technical debt, known issues, and areas of concern.
 
@@ -489,6 +546,22 @@ grep -E '(sk-[a-zA-Z0-9]{20,}|sk_live_[a-zA-Z0-9]+|sk_test_[a-zA-Z0-9]+|ghp_[a-z
 ```
 
 **If SECRETS_FOUND=true:**
+
+**If AGENT_MODE=true:**
+
+Log and auto-proceed (codebase map docs are gitignored):
+
+```bash
+node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  --type freeform \
+  --question "Potential secrets detected in codebase documents. Proceed?" \
+  --decision "Auto-proceed - codebase map documents are gitignored" \
+  --rationale ".planning/codebase/ is in .gitignore, no commit exposure risk"
+```
+
+Continue to commit_codebase_map.
+
+**If AGENT_MODE=false (classic):**
 
 ```
 ⚠️  SECURITY ALERT: Potential secrets detected in codebase documents!
