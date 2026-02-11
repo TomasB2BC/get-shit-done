@@ -19,9 +19,9 @@ Progress: [████████████████░░░░] 92% (23
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18 (17 from v1.12.0-hybrid + 1 new)
-- Average duration: ~44 min
-- Total execution time: ~13.3 hours
+- Total plans completed: 19 (17 from v1.12.0-hybrid + 2 new)
+- Average duration: ~42 min
+- Total execution time: ~13.4 hours
 
 **By Phase:**
 
@@ -35,11 +35,11 @@ Progress: [████████████████░░░░] 92% (23
 | 6. Codebase Mapping Hybrid | 2 | 1.4h | 42 min |
 | 7. Fallback & Integration | 1 | 2.1h | 126 min |
 | 8. Agent Mode Foundation | 3 | 1.18h | 24 min |
-| 9. Full Command Coverage | 1 | 0.57h | 34 min |
+| 9. Full Command Coverage | 2 | 0.63h | 19 min |
 
 **Recent Trend:**
-- Last 5 plans: 126, 15, 3, 55, 34 min
-- Trend: Stable (workflow modification plans ~30-60 min)
+- Last 5 plans: 15, 3, 55, 34, 3 min
+- Trend: Stable (safety limits plans very fast ~3 min)
 
 *Updated after each plan completion*
 
@@ -64,6 +64,10 @@ Recent decisions affecting current work:
 - [08-03 checkpoint-automation]: Auto-handle by type (human-verify=approve, decision=auto-decide, human-action=halt) - different strategies per checkpoint type
 - [09-01 milestone-synthesis]: Milestone goals use log-decision for freeform synthesis (not structured auto-decide) - narrative context from PROJECT.md/MILESTONES.md
 - [09-01 secrets-handling]: Auto-proceed on secrets scan if output is gitignored (e.g., .planning/codebase/) - no commit exposure risk
+- [09-03 budget-estimation]: 4 chars = 1 token + 10k overhead per action - simple conservative heuristic, no precise API counting
+- [09-03 deadlock-threshold]: 3 consecutive cycles with STATE.md hash unchanged - balances false positives vs detection speed
+- [09-03 halt-documentation]: HALT.md includes reason, analysis, investigation steps, recovery options - human debugging needs context + actionable steps
+- [09-03 opus-preference]: Prefer Opus 1M but work on Sonnet with graceful degradation - Opus 1M enables 250+ cycles, Sonnet sufficient for <12 phases
 
 ### Pending Todos
 
@@ -78,9 +82,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Phase 9-01 complete -- ready to plan/execute 09-02 and 09-03
-Resume file: .planning/phases/09-full-command-coverage/09-01-SUMMARY.md
+Stopped at: Phase 9 complete -- ready for verification
+Resume file: .planning/phases/09-full-command-coverage/09-03-SUMMARY.md
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-11 after 09-01-PLAN.md execution*
+*Last updated: 2026-02-11 after 09-03-PLAN.md execution*
