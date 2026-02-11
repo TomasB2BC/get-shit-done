@@ -32,7 +32,7 @@
 **Milestone Goal:** GSD commands run end-to-end without human input when in agent mode
 
 - [x] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
-- [ ] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
+- [x] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
 - [ ] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
 
 ## Phase Details
@@ -72,10 +72,12 @@ Plans:
 4. Full milestone test completes 5-7 phases autonomously without human intervention or budget overruns
 5. Dispatcher uses Opus 1M context when available (model selection in Task spawning), degrades gracefully to Sonnet
 
-**Plans:** TBD (estimated 3-5 plans during phase planning)
+**Plans:** 3 plans
 
 Plans:
-- [ ] 09-01: [TBD during planning]
+- [x] 09-01-PLAN.md -- Agent-mode branches in new-milestone.md and map-codebase.md
+- [x] 09-02-PLAN.md -- Agent-mode branches in debug.md and verify-work.md
+- [x] 09-03-PLAN.md -- Safety limits (token budget, stuck loop detection) and Opus optimization in dispatcher
 
 ### Phase 10: Lead-Approval Integration
 **Goal:** Add human oversight for architectural decisions without blocking operational automation
@@ -99,7 +101,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|---------------|--------|-----------|
@@ -111,9 +113,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Codebase Mapping Hybrid | v1.12.0 | 2/2 | Complete | 2026-02-08 |
 | 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
 | 8. Agent Mode Foundation | v2.0.0 | 3/3 | Complete | 2026-02-11 |
-| 9. Full Command Coverage | v2.0.0 | 0/? | Not started | - |
+| 9. Full Command Coverage | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 10. Lead-Approval Integration | v2.0.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-11 -- Phase 8 complete (Agent Mode Foundation verified)*
+*Last updated: 2026-02-11 -- Phase 9 complete (3/3 plans, verification passed)*
