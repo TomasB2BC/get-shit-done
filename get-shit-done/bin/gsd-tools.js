@@ -58,6 +58,7 @@ function loadConfig(cwd) {
       max_phases: null,
       max_iterations_per_phase: 3,
       budget_tokens_per_phase: 500000,
+      autonomy_level: 'auto-decide',
     },
   };
 
@@ -87,6 +88,7 @@ function loadConfig(cwd) {
         max_phases: settings.max_phases ?? defaults.agent_mode_settings.max_phases,
         max_iterations_per_phase: settings.max_iterations_per_phase ?? defaults.agent_mode_settings.max_iterations_per_phase,
         budget_tokens_per_phase: settings.budget_tokens_per_phase ?? defaults.agent_mode_settings.budget_tokens_per_phase,
+        autonomy_level: settings.autonomy_level ?? defaults.agent_mode_settings.autonomy_level,
       };
     })();
 
@@ -177,9 +179,16 @@ function logAutoDecision(cwd, entry) {
   }
 
   // Tiered verbosity per CONTEXT.md locked decision:
-  // compact one-liners for standard rule-based, verbose for synthetic/skipped
+  // compact one-liners for standard rule-based, verbose for synthetic/skipped, verbose for architectural
   let logEntry;
-  if (entry.synthetic || entry.decision === null) {
+  if (entry.architectural) {
+    // Verbose format for architectural decisions routed to lead via AskUserQuestion
+    logEntry = '### ARCHITECTURAL: ' + entry.type.toUpperCase() + '\n' +
+      '[' + entry.timestamp + '] LEAD PROMPT: "' + entry.question + '"\n' +
+      '  Response: ' + (entry.response || '(pending)') + '\n' +
+      '  Wait time: ' + (entry.wait_time !== undefined ? entry.wait_time + 's' : 'N/A') + '\n' +
+      '  Delegated: ' + (entry.delegated ? 'yes' : 'no') + '\n\n';
+  } else if (entry.synthetic || entry.decision === null) {
     // Verbose format for synthetic and skipped decisions
     logEntry = '### ' + (entry.synthetic ? 'SYNTHETIC' : 'SKIPPED') + ': ' + entry.type.toUpperCase() + '\n' +
       '[' + entry.timestamp + '] ' + entry.type.toUpperCase() + ': "' + entry.question + '"\n' +
@@ -378,6 +387,7 @@ function cmdStateLoad(cwd, raw) {
       `max_phases=${c.agent_mode_settings.max_phases}`,
       `max_iterations_per_phase=${c.agent_mode_settings.max_iterations_per_phase}`,
       `budget_tokens_per_phase=${c.agent_mode_settings.budget_tokens_per_phase}`,
+      `autonomy_level=${c.agent_mode_settings.autonomy_level}`,
       `config_exists=${configExists}`,
       `roadmap_exists=${roadmapExists}`,
       `state_exists=${stateExists}`,
