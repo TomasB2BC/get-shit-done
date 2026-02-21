@@ -161,7 +161,9 @@ HALT_RESUME_EOF
         --type "architectural" \
         --question "Resume from PENDING_APPROVAL.md: $RESUME_ACTION" \
         --decision "Rejected on resume -- HALT" \
-        --rationale "Lead rejected phase $RESUME_PHASE action $RESUME_ACTION on resume"
+        --rationale "Lead rejected phase $RESUME_PHASE action $RESUME_ACTION on resume" \
+        --response "rejected-on-resume" \
+        --wait-time "0"
 
       exit 1
     elif echo "$RESPONSE_LOWER" | grep -q "^delegate\|^auto\|^skip"; then
@@ -469,7 +471,9 @@ if [ "$AUTONOMY_LEVEL" = "lead-approval" ]; then
         --type "architectural" \
         --question "Phase $PHASE: $NEXT_ACTION (delegated)" \
         --decision "Auto-proceeding (category delegated by lead)" \
-        --rationale "Lead delegated $NEXT_ACTION category earlier in this run"
+        --rationale "Lead delegated $NEXT_ACTION category earlier in this run" \
+        --response "delegated" \
+        --wait-time "0"
     else
       # === Write-ahead PENDING_APPROVAL.md BEFORE AskUserQuestion ===
       PENDING_FILE="$PHASE_DIR/PENDING_APPROVAL.md"
@@ -529,7 +533,9 @@ Respond with:
           --type "architectural" \
           --question "Phase $PHASE: $NEXT_ACTION" \
           --decision "Rejected by lead (round 1)" \
-          --rationale "Lead feedback: $REJECTION_FEEDBACK. Wait time: ${WAIT_TIME}s"
+          --rationale "Lead feedback: $REJECTION_FEEDBACK. Wait time: ${WAIT_TIME}s" \
+          --response "rejected" \
+          --wait-time "${WAIT_TIME}"
 
         # === Revision round: re-ask with feedback context ===
         PENDING_FILE="$PHASE_DIR/PENDING_APPROVAL.md"
@@ -614,7 +620,9 @@ HALT_EOF
             --type "architectural" \
             --question "Phase $PHASE: $NEXT_ACTION" \
             --decision "Double rejection -- HALT" \
-            --rationale "Lead rejected twice. Feedback: $REJECTION_FEEDBACK | $LEAD_RESPONSE2. Total wait: $((WAIT_TIME + WAIT_TIME2))s"
+            --rationale "Lead rejected twice. Feedback: $REJECTION_FEEDBACK | $LEAD_RESPONSE2. Total wait: $((WAIT_TIME + WAIT_TIME2))s" \
+            --response "rejected-twice" \
+            --wait-time "$((WAIT_TIME + WAIT_TIME2))"
 
           echo ""
           echo "=================================================="
@@ -640,7 +648,9 @@ HALT_EOF
             --type "architectural" \
             --question "Phase $PHASE: $NEXT_ACTION" \
             --decision "Approved by lead (revision round)" \
-            --rationale "Lead approved after revision. Feedback incorporated. Wait time: $((WAIT_TIME + WAIT_TIME2))s"
+            --rationale "Lead approved after revision. Feedback incorporated. Wait time: $((WAIT_TIME + WAIT_TIME2))s" \
+            --response "approved-revision" \
+            --wait-time "$((WAIT_TIME + WAIT_TIME2))"
         fi
 
       elif echo "$RESPONSE_LOWER" | grep -q "^delegate\|^auto\|^skip"; then
@@ -657,7 +667,9 @@ HALT_EOF
           --type "architectural" \
           --question "Phase $PHASE: $NEXT_ACTION" \
           --decision "Approved by lead" \
-          --rationale "Lead response: $LEAD_RESPONSE. Wait time: ${WAIT_TIME}s"
+          --rationale "Lead response: $LEAD_RESPONSE. Wait time: ${WAIT_TIME}s" \
+          --response "approved" \
+          --wait-time "${WAIT_TIME}"
       fi
     fi
   else
