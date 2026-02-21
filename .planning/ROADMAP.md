@@ -88,15 +88,16 @@ Plans:
 
 **Success Criteria** (what must be TRUE):
 1. Auto-decide classifies decisions as architectural vs operational using defined taxonomy
-2. Architectural decisions route to team lead via SendMessage with context, options, and recommendation
+2. Architectural decisions route to human via AskUserQuestion with context, classification rationale, and response options
 3. Lead can approve or reject via message response; agent continues with approval or revises based on feedback
-4. Timeout handling works (1 hour default) -- uses agent recommendation if no lead response received
+4. No traditional timeout -- AskUserQuestion blocks; write-ahead PENDING_APPROVAL.md for session-death recovery
 5. Config has autonomy_level field with 3 settings (auto-decide, lead-approval, full-auto); lead-approval only active when agent_mode=true AND autonomy_level=lead-approval
 
-**Plans:** TBD (estimated 3-5 plans during phase planning)
+**Plans:** 2 plans
 
 Plans:
-- [ ] 10-01: [TBD during planning]
+- [ ] 10-01-PLAN.md -- Core lead-approval logic (REQUIREMENTS fix + gsd-tools.js + auto-dispatch.md classification/routing/recovery)
+- [ ] 10-02-PLAN.md -- Settings UI for autonomy_level + --resume flag handling
 
 ## Progress
 
@@ -114,8 +115,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
 | 8. Agent Mode Foundation | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 9. Full Command Coverage | v2.0.0 | 3/3 | Complete | 2026-02-11 |
-| 10. Lead-Approval Integration | v2.0.0 | 0/? | Not started | - |
+| 10. Lead-Approval Integration | v2.0.0 | 0/2 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-11 -- Phase 9 complete (3/3 plans, verification passed)*
+*Last updated: 2026-02-21 -- Phase 10 planned (2 plans in 2 waves)*
