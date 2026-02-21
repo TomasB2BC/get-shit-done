@@ -63,6 +63,8 @@ AUTO_SCOPE=${AUTO_SCOPE:-conservative}
 MAX_PHASES_CONFIG=${MAX_PHASES_CONFIG:-999}
 MAX_ITERATIONS=${MAX_ITERATIONS:-3}
 BUDGET_TOKENS=${BUDGET_TOKENS:-500000}
+AUTONOMY_LEVEL=$(echo "$CONFIG_RAW" | grep '^autonomy_level=' | cut -d= -f2)
+AUTONOMY_LEVEL=${AUTONOMY_LEVEL:-auto-decide}
 ```
 
 **4. Parse CLI flags (overrides config):**
@@ -133,6 +135,7 @@ GSD AUTO-DISPATCH
 ==================================================
 Milestone: $MILESTONE
 Agent Mode: ON (auto_scope=$AUTO_SCOPE)
+Autonomy Level: $AUTONOMY_LEVEL
 Starting Phase: $CURRENT_PHASE of $TOTAL_PHASES
 Max Phases: $MAX_PHASES
 Max Iterations: $MAX_ITERATIONS
@@ -142,6 +145,35 @@ Model: Prefer Opus 1M (1M context = 250+ cycles)
 Dispatch log: .planning/AUTO-DISPATCH-LOG.md
 Stop file: .planning/STOP (create to stop gracefully)
 ==================================================
+```
+
+**Lead notification (when lead-approval mode):**
+```bash
+if [ "$AUTONOMY_LEVEL" = "lead-approval" ]; then
+  echo ""
+  echo "=================================================="
+  echo "LEAD-APPROVAL MODE ACTIVE"
+  echo "=================================================="
+  echo ""
+  echo "Architectural decisions will be routed to you via prompt."
+  echo "Operational decisions continue automatically."
+  echo ""
+  echo "Architectural categories:"
+  echo "  * Scope & structure changes (adding/removing phases, milestone goals)"
+  echo "  * External-facing changes (new dependencies, API/schema changes)"
+  echo "  Edge cases evaluated on reversibility."
+  echo ""
+  echo "To delegate a category during the run: respond 'delegate' to any prompt."
+  echo "Delegations apply for this run only (not saved to config)."
+  echo "=================================================="
+fi
+```
+
+**Initialize delegation tracking and decision counters:**
+```bash
+DELEGATED_CATEGORIES=""
+ARCHITECTURAL_COUNT=0
+OPERATIONAL_COUNT=0
 ```
 
 </step>
@@ -264,6 +296,247 @@ node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --question "Phase $PHASE action" \
   --decision "$NEXT_ACTION" \
   --rationale "Phase status: context=$HAS_CONTEXT, plans=$HAS_PLAN/$EXPECTED_PLANS, summaries=$HAS_SUMMARY/$EXPECTED_PLANS, verification=$HAS_VERIFICATION, iteration=$PHASE_ITERATION"
+```
+
+**Lead-approval classification (before action dispatch):**
+
+```bash
+# === Lead-approval classification (before action dispatch) ===
+if [ "$AUTONOMY_LEVEL" = "lead-approval" ]; then
+  # Classify current action
+  CLASSIFICATION="operational"  # default
+
+  # Tier 1: Predefined architectural action types
+  case "$NEXT_ACTION" in
+    generate-context)
+      # Synthesizing phase scope is a structure change
+      CLASSIFICATION="architectural"
+      CLASSIFICATION_REASON="scope & structure change (auto-generating phase context)"
+      ;;
+    re-plan)
+      # Re-planning after verification gap may change structure
+      CLASSIFICATION="architectural"
+      CLASSIFICATION_REASON="structure change (re-planning after verification gap)"
+      ;;
+    halt-max-iterations)
+      # What to do at iteration limit is a lead decision
+      CLASSIFICATION="architectural"
+      CLASSIFICATION_REASON="lead decision (max iterations exceeded -- skip, extend, or halt?)"
+      ;;
+  esac
+
+  # Tier 2: For actions not caught by Tier 1, apply reversibility test
+  # (Dispatcher reasons inline about whether action is hard to undo)
+  # plan-phase, execute-phase, verify-phase, phase-complete are operational
+
+  if [ "$CLASSIFICATION" = "architectural" ]; then
+    ARCHITECTURAL_COUNT=$((ARCHITECTURAL_COUNT + 1))
+
+    # Check if lead has delegated this action type
+    if echo "$DELEGATED_CATEGORIES" | grep -qw "$NEXT_ACTION"; then
+      # Delegated -- auto-decide as if operational
+      OPERATIONAL_COUNT=$((OPERATIONAL_COUNT + 1))
+      ARCHITECTURAL_COUNT=$((ARCHITECTURAL_COUNT - 1))
+
+      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        --type "architectural" \
+        --question "Phase $PHASE: $NEXT_ACTION (delegated)" \
+        --decision "Auto-proceeding (category delegated by lead)" \
+        --rationale "Lead delegated $NEXT_ACTION category earlier in this run"
+    else
+      # === Write-ahead PENDING_APPROVAL.md BEFORE AskUserQuestion ===
+      PENDING_FILE="$PHASE_DIR/PENDING_APPROVAL.md"
+      cat > "$PENDING_FILE" <<PENDING_EOF
+# Pending Approval: Architectural Decision
+
+**Phase:** $PHASE ($PHASE_SLUG)
+**Action:** $NEXT_ACTION
+**Classification:** architectural ($CLASSIFICATION_REASON)
+**Started:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Status:** PENDING
+
+## RESUME_MARKER
+<!-- dispatcher-resume: phase=$PHASE action=$NEXT_ACTION decision_type=architectural status=pending_approval -->
+
+## Recovery
+If you see this file, the dispatcher was waiting for your input and the session died.
+
+To resume: /gsd:auto --resume
+The dispatcher will re-surface this decision.
+
+Or decide manually and delete this file, then run /gsd:auto to continue.
+PENDING_EOF
+
+      # === Route to lead via AskUserQuestion ===
+      WAIT_START=$(date +%s)
+      REJECTION_COUNT=0
+
+      LEAD_RESPONSE=$(AskUserQuestion "ARCHITECTURAL DECISION REQUIRED
+
+Phase $PHASE/$TOTAL_PHASES: $PHASE_SLUG
+Action: $NEXT_ACTION (iteration $PHASE_ITERATION)
+Classification: architectural -- $CLASSIFICATION_REASON
+
+Should I proceed with this action?
+
+Respond with:
+  * approve    -- proceed with $NEXT_ACTION
+  * reject [feedback] -- I will revise and re-ask once
+  * delegate   -- auto-decide $NEXT_ACTION actions for rest of this run")
+
+      WAIT_END=$(date +%s)
+      WAIT_TIME=$((WAIT_END - WAIT_START))
+
+      # Delete PENDING_APPROVAL.md -- response received
+      rm -f "$PENDING_FILE"
+
+      # === Parse lead response ===
+      RESPONSE_LOWER=$(echo "$LEAD_RESPONSE" | tr '[:upper:]' '[:lower:]')
+
+      if echo "$RESPONSE_LOWER" | grep -q "^reject\|^no\|^revise\|^change"; then
+        REJECTION_COUNT=$((REJECTION_COUNT + 1))
+        REJECTION_FEEDBACK=$(echo "$LEAD_RESPONSE" | sed 's/^[Rr]eject[[:space:]]*//')
+
+        # Log first rejection
+        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          --type "architectural" \
+          --question "Phase $PHASE: $NEXT_ACTION" \
+          --decision "Rejected by lead (round 1)" \
+          --rationale "Lead feedback: $REJECTION_FEEDBACK. Wait time: ${WAIT_TIME}s"
+
+        # === Revision round: re-ask with feedback context ===
+        PENDING_FILE="$PHASE_DIR/PENDING_APPROVAL.md"
+        cat > "$PENDING_FILE" <<PENDING2_EOF
+# Pending Approval: Revision Round
+
+**Phase:** $PHASE ($PHASE_SLUG)
+**Action:** $NEXT_ACTION
+**Round:** 2 (final -- will halt on second rejection)
+**Started:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Status:** PENDING
+
+## RESUME_MARKER
+<!-- dispatcher-resume: phase=$PHASE action=$NEXT_ACTION decision_type=architectural status=pending_revision -->
+
+## Previous Rejection
+$REJECTION_FEEDBACK
+PENDING2_EOF
+
+        WAIT_START2=$(date +%s)
+        LEAD_RESPONSE2=$(AskUserQuestion "ARCHITECTURAL DECISION -- REVISION (Round 2 of 2)
+
+Phase $PHASE/$TOTAL_PHASES: $PHASE_SLUG
+Action: $NEXT_ACTION
+
+Your previous feedback: $REJECTION_FEEDBACK
+
+I can adjust the approach based on your feedback. Should I proceed?
+
+Respond with:
+  * approve    -- proceed (I will incorporate your feedback)
+  * reject     -- halt dispatcher (HALT.md written, resume later)
+  * delegate   -- auto-decide $NEXT_ACTION actions for rest of this run")
+
+        WAIT_END2=$(date +%s)
+        WAIT_TIME2=$((WAIT_END2 - WAIT_START2))
+        rm -f "$PENDING_FILE"
+
+        RESPONSE_LOWER2=$(echo "$LEAD_RESPONSE2" | tr '[:upper:]' '[:lower:]')
+
+        if echo "$RESPONSE_LOWER2" | grep -q "^reject\|^no"; then
+          # === Double rejection: HALT ===
+          cat > "$PHASE_DIR/HALT.md" <<HALT_EOF
+# HALT: Double Rejection on Architectural Decision
+
+**Phase:** $PHASE ($PHASE_SLUG)
+**Action:** $NEXT_ACTION
+**Halted:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+## RESUME_MARKER
+<!-- dispatcher-resume: phase=$PHASE action=$NEXT_ACTION decision_type=architectural -->
+
+## Decision History
+
+### Round 1
+**Question:** Should I proceed with $NEXT_ACTION for Phase $PHASE?
+**Response:** Rejected
+**Feedback:** $REJECTION_FEEDBACK
+**Wait time:** ${WAIT_TIME}s
+
+### Round 2 (Revision)
+**Question:** Revised proposal incorporating feedback
+**Response:** Rejected
+**Feedback:** $LEAD_RESPONSE2
+**Wait time:** ${WAIT_TIME2}s
+
+## Reason
+
+Lead rejected the proposed approach twice. Human intervention needed before this action can proceed.
+
+## Recovery
+
+1. Review the decision context above
+2. Edit ROADMAP.md or REQUIREMENTS.md to clarify the approach
+3. Resume: /gsd:auto --resume (dispatcher reads RESUME_MARKER and re-surfaces this decision)
+
+Or continue manually:
+/gsd:execute-phase $PHASE
+HALT_EOF
+
+          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+            --type "architectural" \
+            --question "Phase $PHASE: $NEXT_ACTION" \
+            --decision "Double rejection -- HALT" \
+            --rationale "Lead rejected twice. Feedback: $REJECTION_FEEDBACK | $LEAD_RESPONSE2. Total wait: $((WAIT_TIME + WAIT_TIME2))s"
+
+          echo ""
+          echo "=================================================="
+          echo "HALT: Double Rejection"
+          echo "=================================================="
+          echo "Lead rejected $NEXT_ACTION twice for Phase $PHASE."
+          echo "HALT.md written to $PHASE_DIR/HALT.md"
+          echo "Resume: /gsd:auto --resume"
+          echo "=================================================="
+
+          exit 1
+
+        elif echo "$RESPONSE_LOWER2" | grep -q "^delegate\|^auto\|^skip"; then
+          DELEGATED_CATEGORIES="$DELEGATED_CATEGORIES $NEXT_ACTION"
+          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+            --type "delegation" \
+            --question "Lead delegated category: $NEXT_ACTION" \
+            --decision "Auto-decide for rest of run" \
+            --rationale "Lead delegated after revision round. Wait time: $((WAIT_TIME + WAIT_TIME2))s"
+        else
+          # Approved on revision
+          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+            --type "architectural" \
+            --question "Phase $PHASE: $NEXT_ACTION" \
+            --decision "Approved by lead (revision round)" \
+            --rationale "Lead approved after revision. Feedback incorporated. Wait time: $((WAIT_TIME + WAIT_TIME2))s"
+        fi
+
+      elif echo "$RESPONSE_LOWER" | grep -q "^delegate\|^auto\|^skip"; then
+        # Delegate this category
+        DELEGATED_CATEGORIES="$DELEGATED_CATEGORIES $NEXT_ACTION"
+        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          --type "delegation" \
+          --question "Lead delegated category: $NEXT_ACTION" \
+          --decision "Auto-decide for rest of run" \
+          --rationale "Lead response: $LEAD_RESPONSE. Wait time: ${WAIT_TIME}s"
+      else
+        # Approved (approve, yes, ok, proceed, or free-form treated as approval)
+        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          --type "architectural" \
+          --question "Phase $PHASE: $NEXT_ACTION" \
+          --decision "Approved by lead" \
+          --rationale "Lead response: $LEAD_RESPONSE. Wait time: ${WAIT_TIME}s"
+      fi
+    fi
+  else
+    OPERATIONAL_COUNT=$((OPERATIONAL_COUNT + 1))
+  fi
+fi
 ```
 
 **Execute action based on type:**
@@ -828,6 +1101,26 @@ if [ $PHASES_COMPLETED -ge $TOTAL_PHASES ]; then
     --question "Milestone status" \
     --decision "Milestone $MILESTONE complete" \
     --rationale "All $TOTAL_PHASES phases completed successfully"
+fi
+```
+
+**Lead-approval completion summary:**
+```bash
+if [ "$AUTONOMY_LEVEL" = "lead-approval" ]; then
+  echo ""
+  echo "=================================================="
+  echo "LEAD-APPROVAL SUMMARY"
+  echo "=================================================="
+  echo ""
+  echo "Decisions made:"
+  echo "  * Operational (auto-decided): $OPERATIONAL_COUNT"
+  echo "  * Architectural (routed to lead): $ARCHITECTURAL_COUNT"
+  if [ -n "$DELEGATED_CATEGORIES" ]; then
+    echo "  * Delegated categories:$DELEGATED_CATEGORIES"
+  fi
+  echo ""
+  echo "[See .planning/AUTO-DISPATCH-LOG.md for full audit trail]"
+  echo "=================================================="
 fi
 ```
 
