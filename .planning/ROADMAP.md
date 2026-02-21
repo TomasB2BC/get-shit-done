@@ -6,7 +6,7 @@
 ## Milestones
 
 - [x] **v1.12.0-hybrid** -- Phases 1-7 (shipped 2026-02-08) | [Archive](milestones/v1.12.0-hybrid-ROADMAP.md)
-- [ ] **v2.0.0-agent-mode** -- Phases 8-10 (in progress)
+- [x] **v2.0.0-agent-mode** -- Phases 8-10 (shipped 2026-02-21)
 
 ## Phases
 
@@ -33,7 +33,7 @@
 
 - [x] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
 - [x] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
-- [ ] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
+- [x] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
 
 ## Phase Details
 
@@ -97,7 +97,7 @@ Plans:
 
 Plans:
 - [x] 10-01-PLAN.md -- Core lead-approval logic (REQUIREMENTS fix + gsd-tools.js + auto-dispatch.md classification/routing/recovery)
-- [ ] 10-02-PLAN.md -- Settings UI for autonomy_level + --resume flag handling
+- [x] 10-02-PLAN.md -- Settings UI for autonomy_level + --resume flag handling
 
 ## Progress
 
@@ -115,8 +115,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Fallback & Integration | v1.12.0 | 1/1 | Complete | 2026-02-08 |
 | 8. Agent Mode Foundation | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 9. Full Command Coverage | v2.0.0 | 3/3 | Complete | 2026-02-11 |
-| 10. Lead-Approval Integration | v2.0.0 | 1/2 | In progress | - |
+| 10. Lead-Approval Integration | v2.0.0 | 2/2 | Complete | 2026-02-21 |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-21 -- Phase 10 planned (2 plans in 2 waves)*
+*Last updated: 2026-02-21 -- Phase 10 complete, v2.0.0-agent-mode milestone shipped*
