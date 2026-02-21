@@ -733,19 +733,28 @@ function cmdAutoDecide(cwd, questionType, question, options, context, raw) {
   output(result, raw, rawValue);
 }
 
-function cmdLogDecision(cwd, decisionType, question, decision, rationale, raw) {
+function cmdLogDecision(cwd, decisionType, question, decision, rationale, raw, response, waitTime) {
   if (!decisionType || !question || decision === undefined || !rationale) {
     error('type, question, decision, and rationale required for log-decision');
   }
 
-  logAutoDecision(cwd, {
+  const entry = {
     timestamp: new Date().toISOString(),
     type: decisionType,
     question: question,
     decision: decision,
     rationale: rationale,
-    synthetic: true,
-  });
+  };
+
+  if (decisionType === 'architectural') {
+    entry.architectural = true;
+    if (response) entry.response = response;
+    if (waitTime !== undefined) entry.wait_time = waitTime;
+  } else {
+    entry.synthetic = true;
+  }
+
+  logAutoDecision(cwd, entry);
 
   const result = { logged: true };
   output(result, raw, 'logged');
@@ -847,17 +856,22 @@ function main() {
 
     case 'log-decision': {
       // Parse arguments: --type <type> --question <question> --decision <decision> --rationale <rationale>
+      // Optional: --response <response> --wait-time <seconds> (for architectural type)
       const typeIndex = args.indexOf('--type');
       const questionIndex = args.indexOf('--question');
       const decisionIndex = args.indexOf('--decision');
       const rationaleIndex = args.indexOf('--rationale');
+      const responseIndex = args.indexOf('--response');
+      const waitTimeIndex = args.indexOf('--wait-time');
 
       const decisionType = typeIndex !== -1 ? args[typeIndex + 1] : null;
       const question = questionIndex !== -1 ? args[questionIndex + 1] : null;
       const decision = decisionIndex !== -1 ? args[decisionIndex + 1] : null;
       const rationale = rationaleIndex !== -1 ? args[rationaleIndex + 1] : null;
+      const response = responseIndex !== -1 ? args[responseIndex + 1] : null;
+      const waitTime = waitTimeIndex !== -1 ? args[waitTimeIndex + 1] : null;
 
-      cmdLogDecision(cwd, decisionType, question, decision, rationale, raw);
+      cmdLogDecision(cwd, decisionType, question, decision, rationale, raw, response, waitTime);
       break;
     }
 
