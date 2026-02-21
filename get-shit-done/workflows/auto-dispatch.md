@@ -85,6 +85,133 @@ fi
 if echo "$ARGUMENTS" | grep -q '\-\-single-phase'; then
   MAX_PHASES=1
 fi
+
+# Parse --resume flag
+RESUME_MODE="false"
+if echo "$ARGUMENTS" | grep -q '\-\-resume'; then
+  RESUME_MODE="true"
+fi
+```
+
+</step>
+
+<step name="resume_check">
+When `--resume` flag is passed, check for recovery files before starting the main dispatch loop.
+
+**Priority 1: PENDING_APPROVAL.md (session died mid-approval)**
+
+```bash
+if [ "$RESUME_MODE" = "true" ]; then
+  echo "Resume mode: checking for recovery files..."
+
+  PENDING_FILES=$(find .planning/phases -name "PENDING_APPROVAL.md" 2>/dev/null)
+  if [ -n "$PENDING_FILES" ]; then
+    PENDING_FILE=$(echo "$PENDING_FILES" | head -n1)
+    echo ""
+    echo "=================================================="
+    echo "RESUMING: Found pending approval from previous session"
+    echo "=================================================="
+    echo ""
+    cat "$PENDING_FILE"
+    echo ""
+
+    # Extract phase and action from RESUME_MARKER
+    RESUME_PHASE=$(grep 'dispatcher-resume' "$PENDING_FILE" | grep -oP '(?<=phase=)\d+')
+    RESUME_ACTION=$(grep 'dispatcher-resume' "$PENDING_FILE" | grep -oP '(?<=action=)[a-z-]+')
+
+    # Re-surface the decision
+    LEAD_RESPONSE=$(AskUserQuestion "RESUMED: Previous session died while waiting for your input.
+
+Phase $RESUME_PHASE action: $RESUME_ACTION
+
+The dispatcher was waiting for your approval on this architectural decision.
+Please review the pending approval details above.
+
+Respond with:
+  * approve    -- proceed with $RESUME_ACTION
+  * reject     -- halt dispatcher
+  * delegate   -- auto-decide this action type for rest of run")
+
+    # Delete pending file -- response received
+    rm -f "$PENDING_FILE"
+
+    # Parse response (same logic as main loop)
+    RESPONSE_LOWER=$(echo "$LEAD_RESPONSE" | tr '[:upper:]' '[:lower:]')
+    if echo "$RESPONSE_LOWER" | grep -q "^reject\|^no"; then
+      echo "Lead rejected. Writing HALT.md..."
+      PHASE_DIR=$(dirname "$PENDING_FILE")
+      cat > "$PHASE_DIR/HALT.md" <<HALT_RESUME_EOF
+# HALT: Rejected on Resume
+
+**Phase:** $RESUME_PHASE
+**Action:** $RESUME_ACTION
+**Halted:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+## RESUME_MARKER
+<!-- dispatcher-resume: phase=$RESUME_PHASE action=$RESUME_ACTION decision_type=architectural -->
+
+## Reason
+Lead rejected the architectural decision on resume.
+
+## Recovery
+Edit ROADMAP.md or REQUIREMENTS.md, then run /gsd:auto --resume
+HALT_RESUME_EOF
+
+      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        --type "architectural" \
+        --question "Resume from PENDING_APPROVAL.md: $RESUME_ACTION" \
+        --decision "Rejected on resume -- HALT" \
+        --rationale "Lead rejected phase $RESUME_PHASE action $RESUME_ACTION on resume"
+
+      exit 1
+    elif echo "$RESPONSE_LOWER" | grep -q "^delegate\|^auto\|^skip"; then
+      DELEGATED_CATEGORIES="$DELEGATED_CATEGORIES $RESUME_ACTION"
+    fi
+
+    # Set starting position to resume phase
+    CURRENT_PHASE=$RESUME_PHASE
+
+    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+      --type "dispatch" \
+      --question "Resume from PENDING_APPROVAL.md" \
+      --decision "Resumed phase $RESUME_PHASE, action $RESUME_ACTION" \
+      --rationale "Lead response: $LEAD_RESPONSE"
+  fi
+
+  # Priority 2: HALT.md with RESUME_MARKER (double rejection or other halt)
+  if [ -z "$PENDING_FILES" ]; then
+    HALT_FILES=$(grep -rl 'dispatcher-resume' .planning/phases/*/HALT.md 2>/dev/null)
+    if [ -n "$HALT_FILES" ]; then
+      HALT_FILE=$(echo "$HALT_FILES" | head -n1)
+      echo ""
+      echo "=================================================="
+      echo "RESUMING: Found HALT.md with resume marker"
+      echo "=================================================="
+      echo ""
+      cat "$HALT_FILE"
+      echo ""
+
+      RESUME_PHASE=$(grep 'dispatcher-resume' "$HALT_FILE" | grep -oP '(?<=phase=)\d+')
+      RESUME_ACTION=$(grep 'dispatcher-resume' "$HALT_FILE" | grep -oP '(?<=action=)[a-z-]+')
+
+      # Remove HALT.md to prevent re-triggering
+      rm -f "$HALT_FILE"
+
+      # Set starting position to halted phase
+      CURRENT_PHASE=$RESUME_PHASE
+
+      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        --type "dispatch" \
+        --question "Resume from HALT.md" \
+        --decision "Resumed phase $RESUME_PHASE from halt" \
+        --rationale "HALT.md with dispatcher-resume marker found and cleared"
+
+      echo "Resuming dispatch from Phase $RESUME_PHASE..."
+    else
+      echo "No recovery files found. Starting normal dispatch."
+    fi
+  fi
+fi
 ```
 
 </step>

@@ -1,7 +1,7 @@
 ---
 name: gsd:auto
 description: Run an entire milestone autonomously using Chain-of-Agents dispatcher
-argument-hint: "[--max-phases N] [--single-phase]"
+argument-hint: "[--max-phases N] [--single-phase] [--resume]"
 allowed-tools:
   - Read
   - Write
@@ -29,6 +29,8 @@ Execute an entire milestone autonomously through Chain-of-Agents dispatch: read 
 - Auto-halt: Task crash after retry, verification failure after max iterations, or unrecoverable error
 
 **After this command:** Milestone complete or halted. Run `/gsd:auto` again to resume from halt (after fixing issues), or `/gsd:progress` to see results.
+
+If a previous run was interrupted (session death during approval wait), use `--resume` to continue from where it left off.
 </objective>
 
 <execution_context>
@@ -40,6 +42,7 @@ Execute an entire milestone autonomously through Chain-of-Agents dispatch: read 
 **Flags:**
 - `--max-phases N` — Limit dispatcher to N phases (overrides config max_phases)
 - `--single-phase` — Run only current phase, then stop (overrides config)
+- `--resume` — Resume from a previous session that was interrupted (checks PENDING_APPROVAL.md and HALT.md for resume markers)
 
 Config: @.planning/config.json
 State: @.planning/STATE.md
