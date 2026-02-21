@@ -130,6 +130,16 @@ AskUserQuestion([
       { label: "No", description: "Use classic Task subagents for codebase mapping" },
       { label: "Yes", description: "Use Agent Teams with collaborative analysis for codebase mapping" }
     ]
+  },
+  {
+    question: "Autonomy level when agent_mode is enabled?",
+    header: "Agent Autonomy",
+    multiSelect: false,
+    options: [
+      { label: "Auto-decide (Recommended)", description: "All decisions automated, no human prompts (Phase 8-9 behavior)" },
+      { label: "Lead-approval", description: "Architectural decisions routed to human via prompt, operational auto-decided" },
+      { label: "Full-auto", description: "All decisions automated, no classification (same as auto-decide for now)" }
+    ]
   }
 ])
 ```
@@ -156,11 +166,20 @@ Merge new settings into existing config.json:
     "debug": true/false,
     "verification": true/false,
     "codebase_mapping": true/false
+  },
+  "agent_mode_settings": {
+    ...existing_agent_mode_settings,
+    "autonomy_level": "auto-decide" | "lead-approval" | "full-auto"
   }
 }
 ```
 
-Write updated config to `.planning/config.json`.
+Map the selected Agent Autonomy option to the config value:
+- "Auto-decide (Recommended)" -> "auto-decide"
+- "Lead-approval" -> "lead-approval"
+- "Full-auto" -> "full-auto"
+
+Write autonomy_level to agent_mode_settings in `.planning/config.json`.
 </step>
 
 <step name="confirm">
@@ -183,9 +202,13 @@ Display:
 | AT: Debug            | {On/Off} |
 | AT: Verification     | {On/Off} |
 | AT: Mapping          | {On/Off} |
+| Agent Autonomy       | {Auto-decide/Lead-approval/Full-auto} |
 
 Agent Teams settings only take effect when Orchestration is Hybrid AND
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable is set.
+
+Agent Autonomy only takes effect when agent_mode=true in config.json.
+Lead-approval routes architectural decisions to you during /gsd:auto runs.
 
 These settings apply to future /gsd:plan-phase and /gsd:execute-phase runs.
 
@@ -201,7 +224,7 @@ Quick commands:
 
 <success_criteria>
 - [ ] Current config read
-- [ ] User presented with 10 settings (profile + 3 workflow toggles + git branching + orchestration + 4 agent teams toggles)
+- [ ] User presented with 11 settings (profile + 3 workflow toggles + git branching + orchestration + 4 agent teams toggles + agent autonomy)
 - [ ] Config updated with model_profile, workflow, and git sections
 - [ ] Changes confirmed to user
 </success_criteria>
