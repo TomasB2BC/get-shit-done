@@ -65,6 +65,10 @@ MAX_ITERATIONS=${MAX_ITERATIONS:-3}
 BUDGET_TOKENS=${BUDGET_TOKENS:-500000}
 AUTONOMY_LEVEL=$(echo "$CONFIG_RAW" | grep '^autonomy_level=' | cut -d= -f2)
 AUTONOMY_LEVEL=${AUTONOMY_LEVEL:-auto-decide}
+ORCH_MODE=$(echo "$CONFIG_RAW" | grep '^orchestration=' | cut -d= -f2)
+ORCH_MODE=${ORCH_MODE:-classic}
+AGENT_TEAMS_RESEARCH=$(echo "$CONFIG_RAW" | grep '^agent_teams_research=' | cut -d= -f2)
+AGENT_TEAMS_RESEARCH=${AGENT_TEAMS_RESEARCH:-false}
 ```
 
 **4. Parse CLI flags (overrides config):**
@@ -248,6 +252,15 @@ node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --question "Dispatcher model preference" \
   --decision "Prefer Opus 1M for dispatcher sessions" \
   --rationale "1M context = 250+ cycles without degradation (4k tokens/cycle). Sonnet 200k = 50 cycles (sufficient for most milestones). Graceful degradation: works on Sonnet for <12 phase milestones."
+
+# Log team research config if enabled
+if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
+  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type "dispatch" \
+    --question "Team research configuration" \
+    --decision "Team research enabled (orchestration=$ORCH_MODE, agent_teams.research=$AGENT_TEAMS_RESEARCH)" \
+    --rationale "When plan-phase is dispatched, hybrid research branch should activate if CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is also set"
+fi
 ```
 
 **Initialize counters:**
@@ -269,6 +282,8 @@ Starting Phase: $CURRENT_PHASE of $TOTAL_PHASES
 Max Phases: $MAX_PHASES
 Max Iterations: $MAX_ITERATIONS
 Token Budget: $BUDGET_TOKENS per phase
+Orchestration: $ORCH_MODE
+Team Research: $AGENT_TEAMS_RESEARCH
 
 Model: Prefer Opus 1M (1M context = 250+ cycles)
 Dispatch log: .planning/AUTO-DISPATCH-LOG.md
@@ -735,6 +750,7 @@ You are running in GSD agent mode. For ALL decisions:
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
   node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
+- Orchestration: $ORCH_MODE, agent_teams.research=$AGENT_TEAMS_RESEARCH
 </auto_mode>
 
 Execute /gsd:plan-phase $PHASE
