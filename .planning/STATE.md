@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 10 - Lead-Approval Integration (COMPLETE)
+**Current focus:** Phase 11 - Team Research Integration (EXECUTING)
 
 ## Current Position
 
-Phase: 10 of 10 (Lead-Approval Integration)
-Plan: 3 of 3 complete
-Status: MILESTONE COMPLETE -- v2.0.0-agent-mode shipped 2026-02-21 (gap closure 10-03 complete)
-Last activity: 2026-02-21 -- Completed 10-03 (architectural log format gap closure, 6 min)
+Phase: 11 of 13 (Team Research Integration)
+Plan: 1 of 1 (11-01 complete)
+Status: Phase 11 execution complete -- ready for verification
+Last activity: 2026-02-22 -- Completed 11-01 (wire agent_teams config into gsd-tools.js + auto-dispatch.md)
 
-Progress: [████████████████████] 100% (26/26 total plans across all phases)
+Progress: [████████████████████] 100% (27/27 total plans across all phases)
 
 ## Performance Metrics
 
@@ -37,10 +37,11 @@ Progress: [████████████████████] 100% (2
 | 8. Agent Mode Foundation | 3 | 1.18h | 24 min |
 | 9. Full Command Coverage | 2 | 0.63h | 19 min |
 | 10. Lead-Approval Integration | 3/3 | 12 min | 4 min |
+| 11. Team Research Integration | 1/1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 3, 55, 34, 3, 6 min
-- Trend: Fast (lead-approval gap closure is pure file editing)
+- Last 5 plans: 55, 34, 3, 6, 5 min
+- Trend: Fast (config wiring is pure file editing)
 
 *Updated after each plan completion*
 
@@ -80,21 +81,29 @@ Recent decisions affecting current work:
 - [10-03 architectural-routing]: entry.architectural = true set in cmdLogDecision (not in callers) -- single source of truth for routing to ARCHITECTURAL log format
 - [10-03 response-values]: --response uses short machine-readable status strings (approved, rejected, rejected-on-resume, delegated, rejected-twice, approved-revision)
 - [10-03 wait-time-zero]: --wait-time "0" for calls with no actual wait (resume rejection, delegated auto-proceed) -- explicit zero ensures field always present
+- [11-01 thin-dispatcher]: Dispatcher stays thin -- orchestration context passed to plan-phase via Task prompt, no TeamCreate/debate logic in auto-dispatch.md
+- [11-01 all-toggles-exposed]: All 4 agent_teams toggles exposed in state load (not just research) -- future phases can consume without touching gsd-tools.js
 
 ### Pending Todos
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 11 added: Team Research Integration -- Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
+- Phase 12 added: Decimal Phase Support -- Fix dispatcher increment logic for decimal phases (5.1, 5.2)
+- Phase 13 added: Project Alias Resolver -- Global --project flag across all GSD commands with auto-registration
+
 ### Blockers/Concerns
 
-None. v2.0.0-agent-mode milestone complete.
+None.
 
 ## Session Continuity
 
-Last session: 2026-02-21
-Stopped at: Plan 10-03 complete -- architectural log format gap closure, all Phase 10 plans done
-Resume file: N/A -- milestone complete
+Last session: 2026-02-22
+Stopped at: Plan 11-01 complete -- wire agent_teams config into gsd-tools.js + auto-dispatch.md
+Resume file: N/A
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-21 after Plan 10-03 complete -- Phase 10 fully complete with gap closure*
+*Last updated: 2026-02-22 after Plan 11-01 complete -- Phase 11 execution complete*
