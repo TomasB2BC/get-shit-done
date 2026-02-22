@@ -6,7 +6,7 @@
 ## Milestones
 
 - [x] **v1.12.0-hybrid** -- Phases 1-7 (shipped 2026-02-08) | [Archive](milestones/v1.12.0-hybrid-ROADMAP.md)
-- [ ] **v2.0.0-agent-mode** -- Phases 8-13 (Phases 8-10 shipped 2026-02-21)
+- [x] **v2.0.0-agent-mode** -- Phases 8-13 (shipped 2026-02-22)
 
 ## Phases
 
@@ -36,7 +36,7 @@
 - [x] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
 - [x] **Phase 11: Team Research Integration** - Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
 - [x] **Phase 12: Decimal Phase Support** - Fix dispatcher increment logic to handle decimal phases (5.1, 5.2)
-- [ ] **Phase 13: Project Alias Resolver** - Global --project flag across all GSD commands with auto-registration
+- [x] **Phase 13: Project Alias Resolver** - Global --project flag across all GSD commands with auto-registration
 
 ## Phase Details
 
@@ -138,9 +138,9 @@ The dispatch loop uses integer arithmetic (`PHASE=$((PHASE + 1))`). Decimal phas
 **Plans:** 3 plans
 
 Plans:
-- [ ] 13-01-PLAN.md -- Core gsd-tools.js functions (resolveProject, registerProject, listProjects) + /gsd:register-project command
-- [ ] 13-02-PLAN.md -- --project flag in all 28 command files + Step 0 Project Resolution in 26 workflow files
-- [ ] 13-03-PLAN.md -- Auto-registration in new-project workflow + Step 0 for new-project
+- [x] 13-01-PLAN.md -- Core gsd-tools.js functions (resolveProject, registerProject, listProjects) + /gsd:register-project command
+- [x] 13-02-PLAN.md -- --project flag in all 28 command files + Step 0 Project Resolution in 26 workflow files
+- [x] 13-03-PLAN.md -- Auto-registration in new-project workflow + Step 0 for new-project
 
 **Details:**
 Add `resolveProject(alias)` to gsd-tools.js that reads `.planning/projects.json` and returns the planning directory path. All GSD commands accept `--project <alias>` (e.g., `/gsd:execute-phase 3 --project venntel`). Auto-registration: `/gsd:new-project` detects when running inside a repo with an existing root `.planning/` and auto-adds the sub-project to `projects.json`. Alias derived from directory name. Existing projects get a one-time `/gsd:register-project` or auto-discovery scan. This eliminates wasted tokens from agents resolving wrong project context.
@@ -164,8 +164,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Lead-Approval Integration | v2.0.0 | 3/3 | Complete | 2026-02-21 |
 | 11. Team Research Integration | v2.0.0 | 1/1 | Complete | 2026-02-22 |
 | 12. Decimal Phase Support | v2.0.0 | 2/2 | Complete | 2026-02-22 |
-| 13. Project Alias Resolver | v2.0.0 | 0/3 | Planned | - |
+| 13. Project Alias Resolver | v2.0.0 | 3/3 | Complete | 2026-02-22 |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-22 -- Phase 12 complete (2/2 plans, verification passed 12/12)*
+*Last updated: 2026-02-22 -- Phase 13 complete (3/3 plans, verification passed 15/15) -- v2.0.0-agent-mode MILESTONE COMPLETE*

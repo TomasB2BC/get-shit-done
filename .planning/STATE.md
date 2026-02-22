@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 13 - Project Alias Resolver (NOT PLANNED)
+**Current focus:** Phase 13 complete -- v2.0.0-agent-mode MILESTONE COMPLETE
 
 ## Current Position
 
 Phase: 13 of 13 (Project Alias Resolver)
-Plan: 0 of 0 (not yet planned)
-Status: Phase 12 COMPLETE -- verification passed 12/12 must-haves
-Last activity: 2026-02-22 -- Phase 12 complete (decimal phase support in gsd-tools + auto-dispatch)
+Plan: 3 of 3
+Status: Phase 13 COMPLETE -- verification passed 15/15 must-haves
+Last activity: 2026-02-22 -- Phase 13 complete (project alias resolver in gsd-tools + all commands/workflows)
 
-Progress: [████████████████████] 100% (29/29 total plans across all phases)
+Progress: [████████████████████] 100% (32/32 total plans across all phases)
 
 ## Performance Metrics
 
@@ -39,9 +39,10 @@ Progress: [████████████████████] 100% (2
 | 10. Lead-Approval Integration | 3/3 | 12 min | 4 min |
 | 11. Team Research Integration | 1/1 | 5 min | 5 min |
 | 12. Decimal Phase Support | 2/2 | 7 min | 3.5 min |
+| 13. Project Alias Resolver | 3/3 | 13 min | 4.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 34, 3, 6, 5, 3.5 min
+- Last 5 plans: 5, 3.5, 4, 6, 3 min
 - Trend: Fast (pure file editing, no external deps)
 
 *Updated after each plan completion*
@@ -86,6 +87,10 @@ Recent decisions affecting current work:
 - [11-01 all-toggles-exposed]: All 4 agent_teams toggles exposed in state load (not just research) -- future phases can consume without touching gsd-tools.js
 - [12-01 deduplication]: Added Set-based deduplication in list-phases for multiple dirs with same phase number -- prevents dispatcher visiting same phase twice
 - [12-02 array-iteration]: PHASES bash array + PHASE_IDX replaces integer PHASE counter -- core fix for decimal phase support
+- [13-01 alias-keyed-object]: Alias-keyed object in projects.json (not array) for O(1) lookup -- simple, efficient, no index management
+- [13-01 relative-paths]: Relative paths stored in projects.json, resolved against cwd at runtime -- portable across machines
+- [13-02 step-0-pattern]: Every GSD workflow starts with Step 0 Project Resolution (27/31 workflows) -- consistent entry point
+- [13-03 auto-registration]: Sub-project auto-registration at Step 5.1 (after config.json, before model resolution) -- natural insertion point
 
 ### Pending Todos
 
@@ -104,9 +109,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Phase 12 complete -- verification passed 12/12, ready for Phase 13
+Stopped at: Phase 13 complete -- verification passed 15/15, v2.0.0-agent-mode MILESTONE COMPLETE
 Resume file: N/A
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-22 after Phase 12 complete -- verification passed, ROADMAP updated*
+*Last updated: 2026-02-22 after Phase 13 complete -- verification passed 15/15, ROADMAP updated, milestone complete*
