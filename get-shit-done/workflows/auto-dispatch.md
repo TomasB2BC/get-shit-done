@@ -812,7 +812,7 @@ EOF_EXEC
     ;;
 
   verify-phase)
-    # Spawn Task to run verify-work with agent-mode context
+    # Spawn Task to run verify-phase with agent-mode context
     Task "Verify phase $PHASE with auto-decide" <<EOF_VERIFY
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
@@ -824,7 +824,7 @@ You are running in GSD agent mode. For ALL decisions:
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
-Execute /gsd:verify-work $PHASE
+Execute /gsd:verify-phase $PHASE
 EOF_VERIFY
     ;;
 
@@ -1061,7 +1061,13 @@ fi
 STATE_HASH_AFTER=$(md5sum .planning/STATE.md 2>/dev/null | cut -d' ' -f1 || echo "none")
 
 if [ "$STATE_HASH_BEFORE" = "$STATE_HASH_AFTER" ]; then
-  STUCK_CYCLES=$((STUCK_CYCLES + 1))
+  # Guard: if expected artifact was created (no CRASH_ACTION), the action succeeded
+  # despite STATE.md not being updated. Reset stuck counter instead of incrementing.
+  if [ -z "$CRASH_ACTION" ]; then
+    STUCK_CYCLES=0
+  else
+    STUCK_CYCLES=$((STUCK_CYCLES + 1))
+  fi
 
   if [ $STUCK_CYCLES -ge 3 ]; then
     echo ""
