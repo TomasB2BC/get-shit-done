@@ -27,6 +27,11 @@ Parse current position, decisions, blockers, alignment. If missing but .planning
 ```bash
 COMMIT_PLANNING_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```
+
+```bash
+# Direct agent-mode detection (self-contained, not reliant on parent prompt injection)
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
 </step>
 
 <step name="identify_plan">
@@ -73,6 +78,37 @@ grep -n "type=\"checkpoint" .planning/phases/XX-name/{phase}-{plan}-PLAN.md
 | Decision | C (main) | Execute entirely in main context |
 
 **Pattern A:** init_agent_tracking → spawn Task(subagent_type="gsd-executor", model=executor_model) with prompt: execute plan at [path], autonomous, all tasks + SUMMARY + commit, follow deviation/auth rules, report: plan name, tasks, SUMMARY path, commit hash → track agent_id → wait → update tracking → report.
+
+Before spawning any subagent (Pattern A or B), run context discovery:
+
+```bash
+# Context Discovery for subagent prompts
+CLAUDE_CONTEXT=""
+if [ -f "CLAUDE.md" ]; then
+  CLAUDE_CONTEXT="## Project Instructions (CLAUDE.md)\n$(cat CLAUDE.md)\n\n"
+fi
+
+# Scoped CLAUDE.md from plan's files_modified directories
+SCOPED_DIRS=$(grep "^files_modified:" "{plan_path}" -A 50 | sed -n '/^files_modified:/,/^[a-z]/p' | grep "^\s*-" | sed 's/^\s*-\s*//' | xargs -I{} dirname {} | sort -u)
+for dir in $SCOPED_DIRS; do
+  check_dir="$dir"
+  while [ "$check_dir" != "." ] && [ "$check_dir" != "/" ]; do
+    if [ -f "$check_dir/CLAUDE.md" ] && [ "$check_dir/CLAUDE.md" != "CLAUDE.md" ]; then
+      CLAUDE_CONTEXT="${CLAUDE_CONTEXT}## Scoped Instructions ($check_dir/CLAUDE.md)\n$(cat "$check_dir/CLAUDE.md")\n\n"
+      break
+    fi
+    check_dir=$(dirname "$check_dir")
+  done
+done
+
+SKILLS_CONTEXT=""
+if [ -d ".claude/skills" ]; then
+  SKILLS_LIST=$(ls -1 .claude/skills/ 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+  SKILLS_CONTEXT="## Available Skills\nSkills in .claude/skills/: ${SKILLS_LIST}\nRead SKILL.md for any relevant skill before starting work.\n"
+fi
+```
+
+Include CLAUDE_CONTEXT and SKILLS_CONTEXT in all subagent prompts (Pattern A autonomous, Pattern B segment subagents).
 
 **Pattern B:** Execute segment-by-segment. Autonomous segments: spawn subagent for assigned tasks only (no SUMMARY/commit). Checkpoints: main context. After all segments: aggregate, create SUMMARY, commit. See segment_execution.
 
@@ -124,7 +160,12 @@ This IS the execution instructions. Follow exactly. If plan references CONTEXT.m
 ```bash
 ls .planning/phases/*/SUMMARY.md 2>/dev/null | sort -r | head -2 | tail -1
 ```
-If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers: AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
+If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers:
+- **If AGENT_MODE=true:** Auto-proceed. Log decision:
+  ```bash
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "Previous phase issues found" --decision "Auto-proceed (agent mode)" --rationale "Previous SUMMARY issues detected but agent mode auto-proceeds"
+  ```
+- **If AGENT_MODE=false:** AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
 </step>
 
 <step name="execute">
@@ -187,6 +228,11 @@ Impact: [what this affects]
 Alternatives: [other approaches]
 
 Proceed with proposed change? (yes / different approach / defer)
+```
+
+**If AGENT_MODE=true:** Rule 4 uses auto-decide instead of AskUserQuestion:
+```bash
+node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[Rule 4 architectural decision description]" --options '["Proceed with proposed change", "Defer to next phase"]' --raw
 ```
 
 **Priority:** Rule 4 (STOP) > Rules 1-3 (auto) > unsure → Rule 4
@@ -269,6 +315,12 @@ Display: `CHECKPOINT: [Type]` box → Progress {X}/{Y} → Task name → type-sp
 | decision (9%) | Decision needed + context + options with pros/cons | "Select: option-id" |
 | human-action (1%) | What was automated + ONE manual step + verification plan | "done" |
 
+**If AGENT_MODE=true:** Auto-handle checkpoints by type:
+- human-verify: Auto-approve, log via auto-decide
+- decision: Use auto-decide with checkpoint options
+- human-action: HALT (cannot perform human-only actions)
+
+**If AGENT_MODE=false (default):**
 After response: verify if specified. Pass → continue. Fail → inform, wait. WAIT for user — do NOT hallucinate completion.
 
 See C:\Users\tomas\.claude/get-shit-done/references/checkpoints.md for details.
