@@ -60,6 +60,13 @@ function loadConfig(cwd) {
       budget_tokens_per_phase: 500000,
       autonomy_level: 'auto-decide',
     },
+    orchestration: 'classic',
+    agent_teams: {
+      research: false,
+      debug: false,
+      verification: false,
+      codebase_mapping: false,
+    },
   };
 
   try {
@@ -105,6 +112,16 @@ function loadConfig(cwd) {
       parallelization,
       agent_mode: parsed.agent_mode ?? defaults.agent_mode,
       agent_mode_settings: agentModeSettings,
+      orchestration: get('orchestration') ?? defaults.orchestration,
+      agent_teams: (() => {
+        const at = parsed.agent_teams || {};
+        return {
+          research: at.research ?? defaults.agent_teams.research,
+          debug: at.debug ?? defaults.agent_teams.debug,
+          verification: at.verification ?? defaults.agent_teams.verification,
+          codebase_mapping: at.codebase_mapping ?? defaults.agent_teams.codebase_mapping,
+        };
+      })(),
     };
   } catch {
     return defaults;
@@ -388,6 +405,11 @@ function cmdStateLoad(cwd, raw) {
       `max_iterations_per_phase=${c.agent_mode_settings.max_iterations_per_phase}`,
       `budget_tokens_per_phase=${c.agent_mode_settings.budget_tokens_per_phase}`,
       `autonomy_level=${c.agent_mode_settings.autonomy_level}`,
+      `orchestration=${c.orchestration}`,
+      `agent_teams_research=${c.agent_teams.research}`,
+      `agent_teams_debug=${c.agent_teams.debug}`,
+      `agent_teams_verification=${c.agent_teams.verification}`,
+      `agent_teams_codebase_mapping=${c.agent_teams.codebase_mapping}`,
       `config_exists=${configExists}`,
       `roadmap_exists=${roadmapExists}`,
       `state_exists=${stateExists}`,
