@@ -24,6 +24,8 @@ cat .planning/STATE.md 2>/dev/null
 
 Parse current position, decisions, blockers, alignment. If missing but .planning/ exists: offer reconstruct or continue. If .planning/ missing: error.
 
+**INVARIANT:** All relative path access (e.g., `.planning/STATE.md`) assumes the cwd is the project root. When invoked via execute-phase.md, Step 0 has already resolved --project and changed cwd. When invoked directly, cwd must already be the project root.
+
 ```bash
 COMMIT_PLANNING_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```

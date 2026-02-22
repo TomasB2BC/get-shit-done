@@ -14,6 +14,9 @@ Read all files referenced by the invoking prompt's execution_context before star
 ## 0. Project Resolution
 
 ```bash
+# INVARIANT: No workflow step may resolve relative paths (e.g., .planning/*)
+# before Step 0 completes. Step 0 may change cwd via `cd "$PROJECT_ROOT"`.
+# All relative path access must occur in named steps after Step 0.
 PROJECT_ALIAS=""
 if echo "$ARGUMENTS" | grep -q '\-\-project'; then
   PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
