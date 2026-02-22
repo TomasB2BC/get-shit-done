@@ -34,7 +34,7 @@
 - [x] **Phase 8: Agent Mode Foundation** - Chain-of-Agents dispatcher + auto-decide engine + core workflows
 - [x] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
 - [x] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
-- [ ] **Phase 11: Team Research Integration** - Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
+- [x] **Phase 11: Team Research Integration** - Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
 - [ ] **Phase 12: Decimal Phase Support** - Fix dispatcher increment logic to handle decimal phases (5.1, 5.2)
 - [ ] **Phase 13: Project Alias Resolver** - Global --project flag across all GSD commands with auto-registration
 
@@ -159,10 +159,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Agent Mode Foundation | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 9. Full Command Coverage | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 10. Lead-Approval Integration | v2.0.0 | 3/3 | Complete | 2026-02-21 |
-| 11. Team Research Integration | v2.0.0 | 0/1 | Planned | - |
+| 11. Team Research Integration | v2.0.0 | 1/1 | Complete | 2026-02-22 |
 | 12. Decimal Phase Support | v2.0.0 | 0/0 | Not planned | - |
 | 13. Project Alias Resolver | v2.0.0 | 0/0 | Not planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-21 -- Phase 10 complete (all 3 plans done, gap closure 10-03 executed)*
+*Last updated: 2026-02-22 -- Phase 11 complete (1 plan done, verification passed)*
