@@ -120,7 +120,7 @@ if [ "$RESUME_MODE" = "true" ]; then
     echo ""
 
     # Extract phase and action from RESUME_MARKER
-    RESUME_PHASE=$(grep 'dispatcher-resume' "$PENDING_FILE" | grep -oP '(?<=phase=)\d+')
+    RESUME_PHASE=$(grep 'dispatcher-resume' "$PENDING_FILE" | grep -oP '(?<=phase=)[\d.]+')
     RESUME_ACTION=$(grep 'dispatcher-resume' "$PENDING_FILE" | grep -oP '(?<=action=)[a-z-]+')
 
     # Re-surface the decision
@@ -197,7 +197,7 @@ HALT_RESUME_EOF
       cat "$HALT_FILE"
       echo ""
 
-      RESUME_PHASE=$(grep 'dispatcher-resume' "$HALT_FILE" | grep -oP '(?<=phase=)\d+')
+      RESUME_PHASE=$(grep 'dispatcher-resume' "$HALT_FILE" | grep -oP '(?<=phase=)[\d.]+')
       RESUME_ACTION=$(grep 'dispatcher-resume' "$HALT_FILE" | grep -oP '(?<=action=)[a-z-]+')
 
       # Remove HALT.md to prevent re-triggering
@@ -229,13 +229,14 @@ Read STATE.md and ROADMAP.md to determine starting position and milestone contex
 
 ```bash
 # Get current phase from STATE.md
-CURRENT_PHASE=$(grep -A2 "^Phase:" .planning/STATE.md | head -n1 | grep -oP '\d+')
+CURRENT_PHASE=$(grep -A2 "^Phase:" .planning/STATE.md | head -n1 | grep -oP '\d+(\.\d+)?')
 
 # Get milestone name from ROADMAP.md
 MILESTONE=$(grep -m1 "^- \[.\] \*\*v" .planning/ROADMAP.md | grep -oP 'v[\d.]+[a-z-]*')
 
-# Count total phases in current milestone
-TOTAL_PHASES=$(grep "^- \[.\] \*\*Phase" .planning/ROADMAP.md | grep -v "^<details>" | wc -l)
+# Get sorted phase list from list-phases command
+PHASE_LIST=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js list-phases --raw)
+TOTAL_PHASES=$(echo "$PHASE_LIST" | grep -c . || echo "0")
 ```
 
 **Log dispatch start:**
@@ -278,7 +279,7 @@ GSD AUTO-DISPATCH
 Milestone: $MILESTONE
 Agent Mode: ON (auto_scope=$AUTO_SCOPE)
 Autonomy Level: $AUTONOMY_LEVEL
-Starting Phase: $CURRENT_PHASE of $TOTAL_PHASES
+Starting Phase: $CURRENT_PHASE [$((PHASE_IDX + 1))/$TOTAL_PHASES]
 Max Phases: $MAX_PHASES
 Max Iterations: $MAX_ITERATIONS
 Token Budget: $BUDGET_TOKENS per phase
@@ -328,11 +329,24 @@ Loop through phases, determining next action per phase and spawning Task agents.
 **For each phase from current position to end (or until MAX_PHASES reached):**
 
 ```bash
-PHASE=$CURRENT_PHASE
+# Convert phase list to bash array
+IFS=$'\n' read -r -d '' -a PHASES <<< "$PHASE_LIST" || true
+
+# Find starting index for CURRENT_PHASE
+PHASE_IDX=0
+for i in "${!PHASES[@]}"; do
+  if [ "${PHASES[$i]}" = "$CURRENT_PHASE" ]; then
+    PHASE_IDX=$i
+    break
+  fi
+done
+
+PHASE="${PHASES[$PHASE_IDX]}"
 PHASE_ITERATION=1
 PHASE_TOKENS_USED=0
 
-while [ $PHASE -le $TOTAL_PHASES ] && [ $PHASES_COMPLETED -lt $MAX_PHASES ]; do
+while [ $PHASE_IDX -lt ${#PHASES[@]} ] && [ $PHASES_COMPLETED -lt $MAX_PHASES ]; do
+  PHASE="${PHASES[$PHASE_IDX]}"
 ```
 
 **3a. Check STOP sentinel:**
@@ -388,7 +402,7 @@ HAS_VERIFICATION=$(ls "$PHASE_DIR"/*-VERIFICATION.md 2>/dev/null | wc -l)
 
 # Count expected plans from ROADMAP.md for this phase
 PHASE_SLUG=$(basename "$PHASE_DIR")
-EXPECTED_PLANS=$(grep -A20 "^### Phase $PHASE:" .planning/ROADMAP.md | grep "^Plans:" | head -n1 | grep -oP '\d+' | head -n1 || echo "1")
+EXPECTED_PLANS=$(grep -F -A20 "### Phase $PHASE:" .planning/ROADMAP.md | grep "^Plans:" | head -n1 | grep -oP '\d+' | head -n1 || echo "1")
 ```
 
 Determine next action:
@@ -427,7 +441,7 @@ Print status:
 ```bash
 echo ""
 echo "=================================================="
-echo "Phase $PHASE/$TOTAL_PHASES: $PHASE_SLUG"
+echo "Phase $PHASE [$((PHASE_IDX + 1))/$TOTAL_PHASES]: $PHASE_SLUG"
 echo "Action: $NEXT_ACTION (iteration $PHASE_ITERATION)"
 echo "=================================================="
 echo ""
@@ -519,7 +533,7 @@ PENDING_EOF
 
       LEAD_RESPONSE=$(AskUserQuestion "ARCHITECTURAL DECISION REQUIRED
 
-Phase $PHASE/$TOTAL_PHASES: $PHASE_SLUG
+Phase $PHASE [$((PHASE_IDX + 1))/$TOTAL_PHASES]: $PHASE_SLUG
 Action: $NEXT_ACTION (iteration $PHASE_ITERATION)
 Classification: architectural -- $CLASSIFICATION_REASON
 
@@ -573,7 +587,7 @@ PENDING2_EOF
         WAIT_START2=$(date +%s)
         LEAD_RESPONSE2=$(AskUserQuestion "ARCHITECTURAL DECISION -- REVISION (Round 2 of 2)
 
-Phase $PHASE/$TOTAL_PHASES: $PHASE_SLUG
+Phase $PHASE [$((PHASE_IDX + 1))/$TOTAL_PHASES]: $PHASE_SLUG
 Action: $NEXT_ACTION
 
 Your previous feedback: $REJECTION_FEEDBACK
@@ -835,8 +849,8 @@ EOF_REEXEC
     # Update STATE.md to advance to next phase
     # (This would be done by the Task agents, but we track it here for dispatch)
 
-    # Move to next phase
-    PHASE=$((PHASE + 1))
+    # Move to next phase (array index increment, not integer arithmetic)
+    PHASE_IDX=$((PHASE_IDX + 1))
     PHASE_ITERATION=1
     PHASE_TOKENS_USED=0
     continue
@@ -910,7 +924,7 @@ After Task returns, verify expected artifact exists:
 ```bash
 case "$NEXT_ACTION" in
   generate-context)
-    if [ ! -f "$PHASE_DIR/${PHASE}-CONTEXT.md" ]; then
+    if ! ls "$PHASE_DIR"/*-CONTEXT.md >/dev/null 2>&1; then
       echo "ERROR: Task crashed -- CONTEXT.md not created"
       # Trigger crash handling
       CRASH_ACTION="generate-context"
@@ -931,7 +945,7 @@ case "$NEXT_ACTION" in
     fi
     ;;
   verify-phase)
-    if [ ! -f "$PHASE_DIR"/*-VERIFICATION.md ]; then
+    if ! ls "$PHASE_DIR"/*-VERIFICATION.md >/dev/null 2>&1; then
       echo "ERROR: Task crashed -- VERIFICATION.md not created"
       CRASH_ACTION="verify-phase"
     fi
@@ -1078,7 +1092,7 @@ Option 1: Fix state update logic and resume:
 
 Option 2: Manually advance phase in STATE.md and continue:
 \`\`\`bash
-# Edit STATE.md to set Phase: $((PHASE + 1))
+# Edit STATE.md to set the Phase field to the next phase number
 /gsd:auto
 \`\`\`
 
@@ -1230,7 +1244,7 @@ echo "Dispatch log: .planning/AUTO-DISPATCH-LOG.md"
 echo "Project state: .planning/STATE.md"
 echo ""
 
-if [ $PHASES_COMPLETED -ge $TOTAL_PHASES ]; then
+if [ $PHASE_IDX -ge ${#PHASES[@]} ]; then
   echo "STATUS: Milestone complete"
   echo ""
   echo "Next: Run /gsd:progress to see full results"
@@ -1247,7 +1261,7 @@ echo "=================================================="
 
 **Update STATE.md with milestone completion (if all phases done):**
 ```bash
-if [ $PHASES_COMPLETED -ge $TOTAL_PHASES ]; then
+if [ $PHASE_IDX -ge ${#PHASES[@]} ]; then
   # Update STATE.md status to milestone complete
   # (This is typically done by the verify-work or execute-phase Task, but we log it here)
 
