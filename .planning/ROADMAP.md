@@ -135,10 +135,12 @@ The dispatch loop uses integer arithmetic (`PHASE=$((PHASE + 1))`). Decimal phas
 
 **Depends on:** Phase 10 (independent of Phases 11-12)
 
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 13 to break down)
+- [ ] 13-01-PLAN.md -- Core gsd-tools.js functions (resolveProject, registerProject, listProjects) + /gsd:register-project command
+- [ ] 13-02-PLAN.md -- --project flag in all 28 command files + Step 0 Project Resolution in 26 workflow files
+- [ ] 13-03-PLAN.md -- Auto-registration in new-project workflow + Step 0 for new-project
 
 **Details:**
 Add `resolveProject(alias)` to gsd-tools.js that reads `.planning/projects.json` and returns the planning directory path. All GSD commands accept `--project <alias>` (e.g., `/gsd:execute-phase 3 --project venntel`). Auto-registration: `/gsd:new-project` detects when running inside a repo with an existing root `.planning/` and auto-adds the sub-project to `projects.json`. Alias derived from directory name. Existing projects get a one-time `/gsd:register-project` or auto-discovery scan. This eliminates wasted tokens from agents resolving wrong project context.
@@ -162,7 +164,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Lead-Approval Integration | v2.0.0 | 3/3 | Complete | 2026-02-21 |
 | 11. Team Research Integration | v2.0.0 | 1/1 | Complete | 2026-02-22 |
 | 12. Decimal Phase Support | v2.0.0 | 2/2 | Complete | 2026-02-22 |
-| 13. Project Alias Resolver | v2.0.0 | 0/0 | Not planned | - |
+| 13. Project Alias Resolver | v2.0.0 | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
