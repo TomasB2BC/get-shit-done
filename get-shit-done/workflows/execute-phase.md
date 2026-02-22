@@ -12,6 +12,29 @@ Read STATE.md and config.json before any operation.
 
 <process>
 
+
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 <step name="resolve_model_profile" priority="first">
 
 ```bash
@@ -168,6 +191,37 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
    CONFIG_CONTENT=$(cat .planning/config.json 2>/dev/null)
    ```
 
+   ```bash
+   # --- Context Discovery (added by quick-006) ---
+   # 1. Gather project-root CLAUDE.md
+   CLAUDE_CONTEXT=""
+   if [ -f "CLAUDE.md" ]; then
+     CLAUDE_CONTEXT="## Project Instructions (CLAUDE.md)\n$(cat CLAUDE.md)\n\n"
+   fi
+
+   # 2. Gather scoped CLAUDE.md files from directories in files_modified
+   SCOPED_DIRS=$(grep "^files_modified:" "{plan_path}" -A 50 | sed -n '/^files_modified:/,/^[a-z]/p' | grep "^\s*-" | sed 's/^\s*-\s*//' | xargs -I{} dirname {} | sort -u)
+   for dir in $SCOPED_DIRS; do
+     # Walk up from each target directory looking for scoped CLAUDE.md
+     check_dir="$dir"
+     while [ "$check_dir" != "." ] && [ "$check_dir" != "/" ]; do
+       if [ -f "$check_dir/CLAUDE.md" ] && [ "$check_dir/CLAUDE.md" != "CLAUDE.md" ]; then
+         CLAUDE_CONTEXT="${CLAUDE_CONTEXT}## Scoped Instructions ($check_dir/CLAUDE.md)\n$(cat "$check_dir/CLAUDE.md")\n\n"
+         break
+       fi
+       check_dir=$(dirname "$check_dir")
+     done
+   done
+
+   # 3. List available skills
+   SKILLS_CONTEXT=""
+   if [ -d ".claude/skills" ]; then
+     SKILLS_LIST=$(ls -1 .claude/skills/ 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+     SKILLS_CONTEXT="## Available Skills\nThe following skills are available in .claude/skills/: ${SKILLS_LIST}\nTo use a skill, read its SKILL.md file: .claude/skills/{name}/SKILL.md\n"
+   fi
+   # --- End Context Discovery ---
+   ```
+
    Each agent prompt:
 
    **If AGENT_MODE=true, prepend auto_mode context:**
@@ -203,6 +257,11 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
    Config (if exists):
    {config_content}
+
+   Project context (auto-discovered):
+   {CLAUDE_CONTEXT}
+
+   {SKILLS_CONTEXT}
    </context>
 
    <success_criteria>

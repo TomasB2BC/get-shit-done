@@ -20,6 +20,29 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 
 <process>
 
+
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 <step name="resolve_model_profile" priority="first">
 ```bash
 PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
