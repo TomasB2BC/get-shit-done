@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 12 - Decimal Phase Support (NOT PLANNED)
+**Current focus:** Phase 13 - Project Alias Resolver (NOT PLANNED)
 
 ## Current Position
 
-Phase: 12 of 13 (Decimal Phase Support)
+Phase: 13 of 13 (Project Alias Resolver)
 Plan: 0 of 0 (not yet planned)
-Status: Phase 11 COMPLETE -- verification passed 5/5 must-haves
-Last activity: 2026-02-22 -- Phase 11 complete (team research config wired into dispatcher)
+Status: Phase 12 COMPLETE -- verification passed 12/12 must-haves
+Last activity: 2026-02-22 -- Phase 12 complete (decimal phase support in gsd-tools + auto-dispatch)
 
-Progress: [████████████████████] 100% (27/27 total plans across all phases)
+Progress: [████████████████████] 100% (29/29 total plans across all phases)
 
 ## Performance Metrics
 
@@ -38,10 +38,11 @@ Progress: [████████████████████] 100% (2
 | 9. Full Command Coverage | 2 | 0.63h | 19 min |
 | 10. Lead-Approval Integration | 3/3 | 12 min | 4 min |
 | 11. Team Research Integration | 1/1 | 5 min | 5 min |
+| 12. Decimal Phase Support | 2/2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 55, 34, 3, 6, 5 min
-- Trend: Fast (config wiring is pure file editing)
+- Last 5 plans: 34, 3, 6, 5, 3.5 min
+- Trend: Fast (pure file editing, no external deps)
 
 *Updated after each plan completion*
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [10-03 wait-time-zero]: --wait-time "0" for calls with no actual wait (resume rejection, delegated auto-proceed) -- explicit zero ensures field always present
 - [11-01 thin-dispatcher]: Dispatcher stays thin -- orchestration context passed to plan-phase via Task prompt, no TeamCreate/debate logic in auto-dispatch.md
 - [11-01 all-toggles-exposed]: All 4 agent_teams toggles exposed in state load (not just research) -- future phases can consume without touching gsd-tools.js
+- [12-01 deduplication]: Added Set-based deduplication in list-phases for multiple dirs with same phase number -- prevents dispatcher visiting same phase twice
+- [12-02 array-iteration]: PHASES bash array + PHASE_IDX replaces integer PHASE counter -- core fix for decimal phase support
 
 ### Pending Todos
 
@@ -101,9 +104,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Phase 11 complete -- verification passed 5/5, ready for Phase 12
+Stopped at: Phase 12 complete -- verification passed 12/12, ready for Phase 13
 Resume file: N/A
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-22 after Phase 11 complete -- verification passed, ROADMAP updated*
+*Last updated: 2026-02-22 after Phase 12 complete -- verification passed, ROADMAP updated*

@@ -35,7 +35,7 @@
 - [x] **Phase 9: Full Command Coverage** - Remaining workflows + safety limits + Opus optimization
 - [x] **Phase 10: Lead-Approval Integration** - Human oversight for architectural decisions
 - [x] **Phase 11: Team Research Integration** - Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
-- [ ] **Phase 12: Decimal Phase Support** - Fix dispatcher increment logic to handle decimal phases (5.1, 5.2)
+- [x] **Phase 12: Decimal Phase Support** - Fix dispatcher increment logic to handle decimal phases (5.1, 5.2)
 - [ ] **Phase 13: Project Alias Resolver** - Global --project flag across all GSD commands with auto-registration
 
 ## Phase Details
@@ -124,8 +124,8 @@ When config has `agent_teams.research: true`, auto-dispatch's plan-phase step sh
 **Plans:** 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md -- Add list-phases command to gsd-tools.js (phase directory enumeration with numeric sort)
-- [ ] 12-02-PLAN.md -- Update auto-dispatch.md dispatch loop for array-based iteration over sorted phase list
+- [x] 12-01-PLAN.md -- Add list-phases command to gsd-tools.js (phase directory enumeration with numeric sort)
+- [x] 12-02-PLAN.md -- Update auto-dispatch.md dispatch loop for array-based iteration over sorted phase list
 
 **Details:**
 The dispatch loop uses integer arithmetic (`PHASE=$((PHASE + 1))`). Decimal phases like 5.1 break the counter -- incrementing from 5 jumps to 6, skipping 5.1. The `find-phase` tool may handle lookup, but the increment and sequencing logic needs to be aware of decimal phases inserted via `/gsd:insert-phase`. Affects auto-dispatch.md and potentially gsd-tools.js phase enumeration.
@@ -161,9 +161,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Full Command Coverage | v2.0.0 | 3/3 | Complete | 2026-02-11 |
 | 10. Lead-Approval Integration | v2.0.0 | 3/3 | Complete | 2026-02-21 |
 | 11. Team Research Integration | v2.0.0 | 1/1 | Complete | 2026-02-22 |
-| 12. Decimal Phase Support | v2.0.0 | 0/2 | Planned | - |
+| 12. Decimal Phase Support | v2.0.0 | 2/2 | Complete | 2026-02-22 |
 | 13. Project Alias Resolver | v2.0.0 | 0/0 | Not planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-21 -- Phase 12 planned (2 plans in 2 waves)*
+*Last updated: 2026-02-22 -- Phase 12 complete (2/2 plans, verification passed 12/12)*
