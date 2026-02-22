@@ -18,8 +18,8 @@ Then verify each level against the actual codebase.
 </core_principle>
 
 <required_reading>
-@C:\Users\tomas\.claude/get-shit-done/references/verification-patterns.md
-@C:\Users\tomas\.claude/get-shit-done/templates/verification-report.md
+@~/.claude/get-shit-done/references/verification-patterns.md
+@~/.claude/get-shit-done/templates/verification-report.md
 </required_reading>
 
 <process>
@@ -35,10 +35,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -49,7 +49,7 @@ fi
 
 <step name="load_context" priority="first">
 ```bash
-PHASE_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}" --raw)
+PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}" --raw)
 
 grep -A 5 "Phase ${PHASE_NUM}" .planning/ROADMAP.md
 grep -E "^| ${PHASE_NUM}" .planning/REQUIREMENTS.md 2>/dev/null
@@ -182,7 +182,7 @@ REPORT_PATH="$PHASE_DIR/${PHASE_NUM}-VERIFICATION.md"
 
 Fill template sections: frontmatter (phase/timestamp/status/score), goal achievement, artifact table, wiring table, requirements coverage, anti-patterns, human verification, gaps summary, fix plans (if gaps_found), metadata.
 
-See C:\Users\tomas\.claude/get-shit-done/templates/verification-report.md for complete template.
+See ~/.claude/get-shit-done/templates/verification-report.md for complete template.
 </step>
 
 <step name="return_to_orchestrator">

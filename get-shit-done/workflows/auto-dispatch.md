@@ -7,7 +7,7 @@ Autonomous dispatch loop for GSD agent mode. Reads STATE.md, determines next act
 </purpose>
 
 <required_reading>
-@C:\Users\tomas\.claude/get-shit-done/references/planning-config.md for agent_mode config fields
+@~/.claude/get-shit-done/references/planning-config.md for agent_mode config fields
 </required_reading>
 
 <process>
@@ -26,10 +26,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -43,7 +43,7 @@ Check prerequisites before starting dispatch loop.
 
 **1. Verify agent mode enabled:**
 ```bash
-AGENT_MODE=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
+AGENT_MODE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
 
 if [ "$AGENT_MODE" != "true" ]; then
   echo "ERROR: Agent mode not enabled"
@@ -76,7 +76,7 @@ fi
 **3. Read config for limits and scope:**
 ```bash
 # Load config using gsd-tools.js state load --raw
-CONFIG_RAW=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+CONFIG_RAW=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
 
 # Extract agent_mode_settings
 AUTO_SCOPE=$(echo "$CONFIG_RAW" | grep '^auto_scope=' | cut -d= -f2)
@@ -187,7 +187,7 @@ Lead rejected the architectural decision on resume.
 Edit ROADMAP.md or REQUIREMENTS.md, then run /gsd:auto --resume
 HALT_RESUME_EOF
 
-      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+      node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
         --type "architectural" \
         --question "Resume from PENDING_APPROVAL.md: $RESUME_ACTION" \
         --decision "Rejected on resume -- HALT" \
@@ -203,7 +203,7 @@ HALT_RESUME_EOF
     # Set starting position to resume phase
     CURRENT_PHASE=$RESUME_PHASE
 
-    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
       --type "dispatch" \
       --question "Resume from PENDING_APPROVAL.md" \
       --decision "Resumed phase $RESUME_PHASE, action $RESUME_ACTION" \
@@ -232,7 +232,7 @@ HALT_RESUME_EOF
       # Set starting position to halted phase
       CURRENT_PHASE=$RESUME_PHASE
 
-      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+      node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
         --type "dispatch" \
         --question "Resume from HALT.md" \
         --decision "Resumed phase $RESUME_PHASE from halt" \
@@ -261,20 +261,20 @@ CURRENT_PHASE=$(grep -A2 "^Phase:" .planning/STATE.md | head -n1 | grep -oP '\d+
 MILESTONE=$(grep -m1 "^- \[.\] \*\*v" .planning/ROADMAP.md | grep -oP 'v[\d.]+[a-z-]*')
 
 # Get sorted phase list from list-phases command
-PHASE_LIST=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js list-phases --raw)
+PHASE_LIST=$(node ~/.claude/get-shit-done/bin/gsd-tools.js list-phases --raw)
 TOTAL_PHASES=$(echo "$PHASE_LIST" | grep -c . || echo "0")
 ```
 
 **Log dispatch start:**
 ```bash
-node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "dispatch" \
   --question "Auto-dispatch started" \
   --decision "Starting autonomous dispatch for milestone $MILESTONE" \
   --rationale "agent_mode=true, auto_scope=$AUTO_SCOPE, max_phases=$MAX_PHASES, max_iterations=$MAX_ITERATIONS, budget_tokens_per_phase=$BUDGET_TOKENS"
 
 # Log model preference for Opus 1M
-node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "dispatch" \
   --question "Dispatcher model preference" \
   --decision "Prefer Opus 1M for dispatcher sessions" \
@@ -282,7 +282,7 @@ node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
 
 # Log team research config if enabled
 if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type "dispatch" \
     --question "Team research configuration" \
     --decision "Team research enabled (orchestration=$ORCH_MODE, agent_teams.research=$AGENT_TEAMS_RESEARCH)" \
@@ -391,7 +391,7 @@ if [ -f ".planning/STOP" ]; then
   rm .planning/STOP
 
   # Log graceful stop
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type "dispatch" \
     --question "Graceful stop" \
     --decision "Stopping after phase $PHASE completes" \
@@ -413,7 +413,7 @@ STATE_HASH_BEFORE=$(md5sum .planning/STATE.md 2>/dev/null | cut -d' ' -f1 || ech
 
 Read phase directory to determine what exists:
 ```bash
-PHASE_DIR=$(node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw 2>/dev/null)
+PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw 2>/dev/null)
 
 if [ -z "$PHASE_DIR" ]; then
   echo "ERROR: Phase $PHASE not found in roadmap"
@@ -475,7 +475,7 @@ echo ""
 
 Log dispatch event:
 ```bash
-node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "dispatch" \
   --question "Phase $PHASE action" \
   --decision "$NEXT_ACTION" \
@@ -522,7 +522,7 @@ if [ "$AUTONOMY_LEVEL" = "lead-approval" ]; then
       OPERATIONAL_COUNT=$((OPERATIONAL_COUNT + 1))
       ARCHITECTURAL_COUNT=$((ARCHITECTURAL_COUNT - 1))
 
-      node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+      node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
         --type "architectural" \
         --question "Phase $PHASE: $NEXT_ACTION (delegated)" \
         --decision "Auto-proceeding (category delegated by lead)" \
@@ -584,7 +584,7 @@ Respond with:
         REJECTION_FEEDBACK=$(echo "$LEAD_RESPONSE" | sed 's/^[Rr]eject[[:space:]]*//')
 
         # Log first rejection
-        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
           --type "architectural" \
           --question "Phase $PHASE: $NEXT_ACTION" \
           --decision "Rejected by lead (round 1)" \
@@ -671,7 +671,7 @@ Or continue manually:
 /gsd:execute-phase $PHASE
 HALT_EOF
 
-          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
             --type "architectural" \
             --question "Phase $PHASE: $NEXT_ACTION" \
             --decision "Double rejection -- HALT" \
@@ -692,14 +692,14 @@ HALT_EOF
 
         elif echo "$RESPONSE_LOWER2" | grep -q "^delegate\|^auto\|^skip"; then
           DELEGATED_CATEGORIES="$DELEGATED_CATEGORIES $NEXT_ACTION"
-          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
             --type "delegation" \
             --question "Lead delegated category: $NEXT_ACTION" \
             --decision "Auto-decide for rest of run" \
             --rationale "Lead delegated after revision round. Wait time: $((WAIT_TIME + WAIT_TIME2))s"
         else
           # Approved on revision
-          node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+          node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
             --type "architectural" \
             --question "Phase $PHASE: $NEXT_ACTION" \
             --decision "Approved by lead (revision round)" \
@@ -711,14 +711,14 @@ HALT_EOF
       elif echo "$RESPONSE_LOWER" | grep -q "^delegate\|^auto\|^skip"; then
         # Delegate this category
         DELEGATED_CATEGORIES="$DELEGATED_CATEGORIES $NEXT_ACTION"
-        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
           --type "delegation" \
           --question "Lead delegated category: $NEXT_ACTION" \
           --decision "Auto-decide for rest of run" \
           --rationale "Lead response: $LEAD_RESPONSE. Wait time: ${WAIT_TIME}s"
       else
         # Approved (approve, yes, ok, proceed, or free-form treated as approval)
-        node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+        node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
           --type "architectural" \
           --question "Phase $PHASE: $NEXT_ACTION" \
           --decision "Approved by lead" \
@@ -744,9 +744,9 @@ case "$NEXT_ACTION" in
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -786,9 +786,9 @@ EOF_CONTEXT
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 - Orchestration: $ORCH_MODE, agent_teams.research=$AGENT_TEAMS_RESEARCH
 </auto_mode>
@@ -804,9 +804,9 @@ EOF_PLAN
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -821,9 +821,9 @@ EOF_EXEC
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -840,9 +840,9 @@ EOF_VERIFY
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -855,9 +855,9 @@ EOF_REPLAN
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -931,7 +931,7 @@ Or continue manually:
 EOF_HALT
 
     # Update STATE.md
-    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
       --type "halt" \
       --question "Phase $PHASE status" \
       --decision "Halted after max iterations" \
@@ -1048,7 +1048,7 @@ Option 3: Continue manually with human oversight:
 EOF_BUDGET_HALT
 
   # Log halt
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type "halt" \
     --question "Phase $PHASE token budget" \
     --decision "Halted: budget exceeded" \
@@ -1136,7 +1136,7 @@ Option 3: Investigate with manual control:
 EOF_DEADLOCK_HALT
 
     # Log halt
-    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
       --type "halt" \
       --question "Phase $PHASE deadlock" \
       --decision "Halted: stuck loop detected" \
@@ -1164,7 +1164,7 @@ if [ -n "$CRASH_ACTION" ]; then
   echo ""
 
   # Log crash
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type "crash" \
     --question "Task crash on $CRASH_ACTION" \
     --decision "Retry once with fresh context" \
@@ -1215,7 +1215,7 @@ Fix the underlying issue, then run:
 EOF_CRASH_HALT
 
     # Log halt
-    node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
       --type "halt" \
       --question "Phase $PHASE status" \
       --decision "Halted after task crash and retry" \
@@ -1234,7 +1234,7 @@ fi
 After action completes successfully:
 ```bash
 # Log success
-node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "dispatch" \
   --question "Phase $PHASE $NEXT_ACTION status" \
   --decision "Success" \
@@ -1297,7 +1297,7 @@ if [ $PHASE_IDX -ge ${#PHASES[@]} ]; then
   # Update STATE.md status to milestone complete
   # (This is typically done by the verify-work or execute-phase Task, but we log it here)
 
-  node C:/Users/tomas/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type "dispatch" \
     --question "Milestone status" \
     --decision "Milestone $MILESTONE complete" \

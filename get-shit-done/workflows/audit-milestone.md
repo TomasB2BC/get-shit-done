@@ -11,7 +11,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 ## 0. Resolve Model Profile
 
 ```bash
-CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-integration-checker --raw)
+CHECKER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-integration-checker --raw)
 ```
 
 
@@ -25,10 +25,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")

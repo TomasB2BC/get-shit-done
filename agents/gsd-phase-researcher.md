@@ -294,8 +294,8 @@ Verified patterns from official sources:
 Orchestrator provides: phase number/name, description/goal, requirements, constraints, output path.
 
 ```bash
-PHASE_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw)
-PADDED_PHASE=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" | grep -o '"phase_number":"[^"]*"' | cut -d'"' -f4)
+PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw)
+PADDED_PHASE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" | grep -o '"phase_number":"[^"]*"' | cut -d'"' -f4)
 
 cat "$PHASE_DIR"/*-CONTEXT.md 2>/dev/null
 ```
@@ -363,7 +363,7 @@ Write to: `$PHASE_DIR/$PADDED_PHASE-RESEARCH.md`
 ## Step 6: Commit Research (optional)
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs($PHASE): research phase domain" --files "$PHASE_DIR/$PADDED_PHASE-RESEARCH.md"
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs($PHASE): research phase domain" --files "$PHASE_DIR/$PADDED_PHASE-RESEARCH.md"
 ```
 
 ## Step 7: Return Structured Result

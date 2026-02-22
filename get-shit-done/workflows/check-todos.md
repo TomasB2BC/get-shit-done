@@ -20,10 +20,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -36,7 +36,7 @@ fi
 
 <step name="check_exist">
 ```bash
-TODO_COUNT=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos --raw)
+TODO_COUNT=$(node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos --raw)
 echo "Pending todos: $TODO_COUNT"
 ```
 
@@ -66,7 +66,7 @@ Check for area filter in arguments:
 <step name="list_todos">
 ```bash
 # Get todos JSON
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos [area]
+node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos [area]
 ```
 
 Parse JSON output and display as numbered list:
@@ -117,7 +117,7 @@ If `files` field has entries, read and briefly summarize each.
 
 <step name="check_roadmap">
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw
+node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw
 ```
 
 If roadmap exists:
@@ -175,7 +175,7 @@ Return to list_todos step.
 After any action that changes todo count:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos --raw
+node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos --raw
 ```
 
 Update STATE.md "### Pending Todos" section if exists.
@@ -186,7 +186,7 @@ If todo was moved to done/, commit the change:
 
 ```bash
 git rm --cached .planning/todos/pending/[filename] 2>/dev/null || true
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: start work on todo - [title]" --files .planning/todos/done/[filename] .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: start work on todo - [title]" --files .planning/todos/done/[filename] .planning/STATE.md
 ```
 
 Tool respects `commit_docs` config and gitignore automatically.

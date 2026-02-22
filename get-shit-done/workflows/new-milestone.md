@@ -23,10 +23,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -65,7 +65,7 @@ Synthesize milestone goals from available context:
 3. Generate comprehensive milestone goals synthesizing project vision and next logical features
 4. Log the synthesis:
    ```bash
-   node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+   node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
      --type freeform \
      --question "What do you want to build next?" \
      --decision "[synthesized milestone goals]" \
@@ -90,7 +90,7 @@ Synthesize milestone goals from available context:
 Auto-approve suggested version:
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Use version v[suggested]?" --options '["Approve","Use different"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Use version v[suggested]?" --options '["Approve","Use different"]' --raw)
 ```
 
 Use suggested version and continue to Step 4.
@@ -134,15 +134,15 @@ Keep Accumulated Context section from previous milestone.
 Delete MILESTONE-CONTEXT.md if exists (consumed).
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: start milestone v[X.Y] [Name]" --files .planning/PROJECT.md .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: start milestone v[X.Y] [Name]" --files .planning/PROJECT.md .planning/STATE.md
 ```
 
 ## 7. Resolve Model Profile
 
 ```bash
-RESEARCHER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-project-researcher --raw)
-SYNTHESIZER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-research-synthesizer --raw)
-ROADMAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-roadmapper --raw)
+RESEARCHER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-project-researcher --raw)
+SYNTHESIZER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-research-synthesizer --raw)
+ROADMAPPER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-roadmapper --raw)
 ```
 
 ## 8. Research Decision
@@ -150,7 +150,7 @@ ROADMAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js re
 **If AGENT_MODE=true:**
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type research --question "Research the domain ecosystem for new features before defining requirements?" --options '["Research first (Recommended)","Skip research"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type research --question "Research the domain ecosystem for new features before defining requirements?" --options '["Research first (Recommended)","Skip research"]' --raw)
 ```
 
 Proceed based on decision (agent mode defaults to research).
@@ -199,7 +199,7 @@ Focus ONLY on what's needed for the NEW features.
 
 <output>
 Write to: .planning/research/{FILE}
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/{FILE}
+Use template: ~/.claude/get-shit-done/templates/research-project/{FILE}
 </output>
 ", subagent_type="gsd-project-researcher", model="{researcher_model}", description="{DIMENSION} research")
 ```
@@ -223,7 +223,7 @@ Synthesize research outputs into SUMMARY.md.
 Read: .planning/research/STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
 
 Write to: .planning/research/SUMMARY.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/SUMMARY.md
+Use template: ~/.claude/get-shit-done/templates/research-project/SUMMARY.md
 Commit after writing.
 ", subagent_type="gsd-research-synthesizer", model="{synthesizer_model}", description="Synthesize research")
 ```
@@ -273,7 +273,7 @@ For each category, use auto-decide multiSelect:
 # Build JSON array of feature options for this category
 FEATURES_JSON='["[Feature 1]","[Feature 2]","[Feature 3]","None for this milestone"]'
 
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type multiSelect --question "Which [category] features for this milestone?" --options "$FEATURES_JSON" --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type multiSelect --question "Which [category] features for this milestone?" --options "$FEATURES_JSON" --raw)
 ```
 
 The auto-decide multiSelect rule applies:
@@ -296,7 +296,7 @@ Track: Selected → this milestone. Unselected table stakes → future. Unselect
 **If AGENT_MODE=true:**
 
 ```bash
-ADDITIONS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Any requirements research missed?" --options '["No, research covered it","Yes, let me add some"]' --raw)
+ADDITIONS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Any requirements research missed?" --options '["No, research covered it","Yes, let me add some"]' --raw)
 ```
 
 Auto-decide binary selects "No, research covered it".
@@ -343,7 +343,7 @@ Does this capture what you're building? (yes / adjust)
 Auto-approve requirements:
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Requirements look correct?" --options '["yes","adjust"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Requirements look correct?" --options '["yes","adjust"]' --raw)
 ```
 
 Continue to commit.
@@ -354,7 +354,7 @@ If "adjust": Return to scoping.
 
 **Commit requirements:**
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: define milestone v[X.Y] requirements" --files .planning/REQUIREMENTS.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: define milestone v[X.Y] requirements" --files .planning/REQUIREMENTS.md
 ```
 
 ## 10. Create Roadmap
@@ -424,7 +424,7 @@ Success criteria:
 Auto-approve roadmap:
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Does this roadmap structure work for you?" --options '["Approve","Adjust phases","Review full file"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Does this roadmap structure work for you?" --options '["Approve","Adjust phases","Review full file"]' --raw)
 ```
 
 Skip revision loop. Proceed to commit.
@@ -441,7 +441,7 @@ Skip revision loop. Proceed to commit.
 
 **Commit roadmap** (after approval):
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: create milestone v[X.Y] roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: create milestone v[X.Y] roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
 ```
 
 ## 11. Done

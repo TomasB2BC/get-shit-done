@@ -34,8 +34,8 @@ If a previous run was interrupted (session death during approval wait), use `--r
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/auto-dispatch.md
-@C:\Users\tomas\.claude/get-shit-done/references/ui-brand.md
+@~/.claude/get-shit-done/workflows/auto-dispatch.md
+@~/.claude/get-shit-done/references/ui-brand.md
 </execution_context>
 
 <context>
@@ -58,7 +58,7 @@ SINGLE_PHASE_FLAG=$(echo "$ARGUMENTS" | grep -q '\-\-single-phase' && echo "true
 </context>
 
 <process>
-Execute the auto-dispatch workflow from @C:\Users\tomas\.claude/get-shit-done/workflows/auto-dispatch.md end-to-end.
+Execute the auto-dispatch workflow from @~/.claude/get-shit-done/workflows/auto-dispatch.md end-to-end.
 
 The dispatcher:
 1. Validates agent_mode=true prerequisite

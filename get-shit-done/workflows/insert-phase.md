@@ -20,10 +20,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -74,7 +74,7 @@ fi
 Load the roadmap file:
 
 ```bash
-ROADMAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
+ROADMAP_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
 if [ "$ROADMAP_EXISTS" = "true" ]; then
   ROADMAP=".planning/ROADMAP.md"
 else
@@ -123,7 +123,7 @@ Store as: `decimal_phase="$(printf "%02d" $after_phase).${next_decimal}"`
 Convert the phase description to a kebab-case slug:
 
 ```bash
-slug=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$description" --raw)
+slug=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$description" --raw)
 ```
 
 Phase directory name: `{decimal-phase}-{slug}`

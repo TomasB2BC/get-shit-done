@@ -15,7 +15,7 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 </philosophy>
 
 <template>
-@C:\Users\tomas\.claude/get-shit-done/templates/UAT.md
+@~/.claude/get-shit-done/templates/UAT.md
 </template>
 
 <process>
@@ -31,10 +31,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -45,8 +45,8 @@ fi
 
 <step name="resolve_model_profile" priority="first">
 ```bash
-PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
-CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
+PLANNER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
+CHECKER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
 ```
 
 **Detect agent mode:**
@@ -83,7 +83,7 @@ if [ -n "$ACTIVE_SESSIONS" ] && [ -z "$ARGUMENTS" ]; then
 
   # Log auto-selection
   PHASE=$(basename "$SELECTED_SESSION" | sed 's/-UAT.md//')
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Select UAT session to resume" \
     --decision "$PHASE ($MAX_PENDING pending tests)" \
@@ -139,7 +139,7 @@ Continue to `create_uat_file`.
 Parse $ARGUMENTS as phase number (e.g., "4") or plan number (e.g., "04-02").
 
 ```bash
-PHASE_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}" --raw)
+PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}" --raw)
 
 # Find SUMMARY files
 ls "$PHASE_DIR"/*-SUMMARY.md 2>/dev/null
@@ -274,7 +274,7 @@ if [ "$IS_VERIFIABLE" = "true" ] && [ "$VERIFICATION_RESULT" = "PASS" ]; then
   # Update test as PASS with evidence
   # Update UAT.md Tests section
   # Log decision
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Test $TEST_NUMBER: $TEST_NAME" \
     --decision "PASS" \
@@ -284,7 +284,7 @@ elif [ "$IS_VERIFIABLE" = "true" ] && [ "$VERIFICATION_RESULT" = "FAIL" ]; then
   # Update test as FAIL with evidence
   # Update UAT.md Tests section and Gaps
   # Log decision
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Test $TEST_NUMBER: $TEST_NAME" \
     --decision "FAIL" \
@@ -294,7 +294,7 @@ else
   # Mark as SKIPPED - requires human assessment
   # Update UAT.md Tests section
   # Log decision
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Test $TEST_NUMBER: $TEST_NAME" \
     --decision "SKIPPED" \
@@ -430,7 +430,7 @@ Clear Current Test section:
 
 Commit the UAT file:
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "test({phase}): complete UAT - {passed} passed, {issues} issues" --files ".planning/phases/XX-name/{phase}-UAT.md"
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "test({phase}): complete UAT - {passed} passed, {issues} issues" --files ".planning/phases/XX-name/{phase}-UAT.md"
 ```
 
 Present summary:
@@ -472,7 +472,7 @@ Spawning parallel debug agents to investigate each issue.
 ```
 
 - Load diagnose-issues workflow
-- Follow @C:\Users\tomas\.claude/get-shit-done/workflows/diagnose-issues.md
+- Follow @~/.claude/get-shit-done/workflows/diagnose-issues.md
 - Spawn parallel debug agents for each issue
 - Collect root causes
 - Update UAT.md with root causes
@@ -503,9 +503,9 @@ Task(
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from project context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <planning_context>
@@ -564,9 +564,9 @@ Task(
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from project context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <verification_context>
@@ -613,9 +613,9 @@ Task(
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from project context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <revision_context>
@@ -654,18 +654,18 @@ Display: `Max iterations reached. {N} issues remain.`
 Auto-decide action (default: Force proceed):
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Max revision iterations reached. Force proceed or abandon?" --options '["Force proceed","Abandon"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Max revision iterations reached. Force proceed or abandon?" --options '["Force proceed","Abandon"]' --raw)
 
 if [ "$DECISION" = "Force proceed" ]; then
   # Log and continue to present_ready
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Revision loop max iterations" \
     --decision "Force proceed with $N unresolved issues" \
     --rationale "Auto-decided to proceed (max iterations reached)"
 else
   # Log and exit
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Revision loop max iterations" \
     --decision "Abandoned gap closure" \

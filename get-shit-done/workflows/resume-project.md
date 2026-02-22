@@ -11,7 +11,7 @@ Instantly restore full project context so "Where were we?" has an immediate, com
 </purpose>
 
 <required_reading>
-@C:\Users\tomas\.claude/get-shit-done/references/continuation-format.md
+@~/.claude/get-shit-done/references/continuation-format.md
 </required_reading>
 
 <process>
@@ -28,10 +28,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -46,9 +46,9 @@ fi
 Check if this is an existing project:
 
 ```bash
-STATE_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/STATE.md --raw)
-ROADMAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
-PROJECT_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/PROJECT.md --raw)
+STATE_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/STATE.md --raw)
+ROADMAP_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
+PROJECT_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/PROJECT.md --raw)
 [ "$STATE_EXISTS" = "true" ] && echo "Project exists"
 [ "$ROADMAP_EXISTS" = "true" ] && echo "Roadmap exists"
 [ "$PROJECT_EXISTS" = "true" ] && echo "Project file exists"
@@ -101,7 +101,7 @@ for plan in .planning/phases/*/*-PLAN.md; do
 done 2>/dev/null
 
 # Check for interrupted agents
-AGENT_FILE_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/current-agent-id.txt --raw)
+AGENT_FILE_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/current-agent-id.txt --raw)
 if [ "$AGENT_FILE_EXISTS" = "true" ] && [ -s .planning/current-agent-id.txt ]; then
   AGENT_ID=$(cat .planning/current-agent-id.txt | tr -d '\n')
   echo "Interrupted agent: $AGENT_ID"

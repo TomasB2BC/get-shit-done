@@ -31,7 +31,7 @@ ls .planning/debug/*.md 2>/dev/null | grep -v resolved | head -5
 ## 0. Resolve Model Profile
 
 ```bash
-DEBUGGER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-debugger --raw)
+DEBUGGER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-debugger --raw)
 ```
 
 **Detect agent mode:**
@@ -54,7 +54,7 @@ if [ -n "$ACTIVE_SESSIONS" ] && [ -z "$ARGUMENTS" ]; then
   ISSUE_SLUG=$(basename "$LATEST_SESSION" .md)
 
   # Log auto-selection
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Select debug session to resume" \
     --decision "$ISSUE_SLUG" \
@@ -108,14 +108,14 @@ if [ -n "$PRIMARY_SYMPTOM" ] || [ -n "$BLOCKERS" ] || [ -n "$ERROR_LOGS" ] || [ 
   REPRODUCTION="$PRIMARY_SYMPTOM"
 
   # Log decision
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Debug symptoms gathered" \
     --decision "Expected: $EXPECTED | Actual: $ACTUAL | Errors: $ERRORS | Timeline: $TIMELINE | Reproduction: $REPRODUCTION" \
     --rationale "Synthesized from STATE.md, error logs, git history, HALT files, and arguments"
 else
   # Insufficient info for auto-debugging
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Auto-debug symptoms" \
     --decision "SKIPPED" \
@@ -249,9 +249,9 @@ Each investigator gets technique-specific guidance to avoid anchoring:
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <objective>
@@ -330,9 +330,9 @@ Task(
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <objective>
@@ -412,9 +412,9 @@ Task(
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <objective>
@@ -685,9 +685,9 @@ Fill prompt and spawn:
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <objective>
@@ -732,14 +732,14 @@ Task(
 Auto-decide next action (default: Fix now):
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Root cause found. Fix now or plan fix?" --options '["Fix now","Plan fix"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Root cause found. Fix now or plan fix?" --options '["Fix now","Plan fix"]' --raw)
 
 if [ "$DECISION" = "Fix now" ]; then
   # Spawn fix subagent
   # [existing fix agent spawn logic]
 else
   # Log plan suggestion
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Next action after root cause found" \
     --decision "Plan fix using /gsd:plan-phase --gaps" \
@@ -769,13 +769,13 @@ CHECKPOINT_TYPE=$(grep "^**Type:**" debug_output.md | sed 's/.*Type:\*\* //')
 case "$CHECKPOINT_TYPE" in
   human-verify)
     # Auto-approve verification checkpoint
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Checkpoint: human-verify" --options '["Approved"]' --raw
+    node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Checkpoint: human-verify" --options '["Approved"]' --raw
     # Spawn continuation agent with approval
     ;;
   decision)
     # Use auto-decide with checkpoint options
     CHECKPOINT_OPTIONS=$(grep "^**Options:**" debug_output.md | sed 's/.*Options:\*\* //')
-    DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Checkpoint decision" --options "$CHECKPOINT_OPTIONS" --raw)
+    DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Checkpoint decision" --options "$CHECKPOINT_OPTIONS" --raw)
     # Spawn continuation agent with decision
     ;;
   human-action)
@@ -821,14 +821,14 @@ Present checkpoint details to user. Get user response. Spawn continuation agent 
 Auto-decide to continue or add context (default: Continue):
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Investigation inconclusive. Continue or add context?" --options '["Continue investigating","Add more context"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Investigation inconclusive. Continue or add context?" --options '["Continue investigating","Add more context"]' --raw)
 
 if [ "$DECISION" = "Continue investigating" ]; then
   # Spawn new agent with additional context
   # [existing continuation logic]
 else
   # Log need for more context and halt
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
     --type freeform \
     --question "Investigation inconclusive outcome" \
     --decision "Need more context" \
@@ -854,9 +854,9 @@ When user responds to checkpoint (or agent-mode auto-handles), spawn fresh agent
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 <objective>

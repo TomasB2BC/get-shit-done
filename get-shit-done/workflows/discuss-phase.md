@@ -118,10 +118,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -153,7 +153,7 @@ Exit workflow.
 Check if CONTEXT.md already exists:
 
 ```bash
-PHASE_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE}" --raw)
+PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE}" --raw)
 ls ${PHASE_DIR}/*-CONTEXT.md 2>/dev/null
 ```
 
@@ -304,12 +304,12 @@ Create CONTEXT.md capturing decisions made.
 **Find or create phase directory:**
 
 ```bash
-PHASE_INFO=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE}")
+PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE}")
 PHASE_DIR=$(echo "$PHASE_INFO" | grep -o '"directory":"[^"]*"' | cut -d'"' -f4)
 PADDED_PHASE=$(echo "$PHASE_INFO" | grep -o '"phase_number":"[^"]*"' | cut -d'"' -f4)
 if [ -z "$PHASE_DIR" ]; then
   PHASE_NAME=$(grep "Phase ${PHASE}:" .planning/ROADMAP.md | sed 's/.*Phase [0-9]*: //')
-  PHASE_SLUG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
+  PHASE_SLUG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
   PADDED_PHASE=$(printf "%02d" ${PHASE})
   mkdir -p ".planning/phases/${PADDED_PHASE}-${PHASE_SLUG}"
   PHASE_DIR=".planning/phases/${PADDED_PHASE}-${PHASE_SLUG}"
@@ -417,7 +417,7 @@ Created: .planning/phases/${PADDED_PHASE}-${SLUG}/${PADDED_PHASE}-CONTEXT.md
 Commit phase context:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs(${PADDED_PHASE}): capture phase context" --files "${PHASE_DIR}/${PADDED_PHASE}-CONTEXT.md"
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs(${PADDED_PHASE}): capture phase context" --files "${PHASE_DIR}/${PADDED_PHASE}-CONTEXT.md"
 ```
 
 Confirm: "Committed: docs(${PADDED_PHASE}): capture phase context"

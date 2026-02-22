@@ -172,6 +172,84 @@ significantly more viable because the "context management" complexity drops.
 sessions (each with context overhead), the total cost may be comparable. The value is
 in reduced coordination overhead, not token savings.
 
+## CRITICAL: Context Refresh Problem
+
+> "As a human I am repeatedly opening and closing terminals to refresh the context.
+> How can that be done by agents so they always run on fresh content?"
+
+This is the **single biggest architectural challenge** for agent mode and must be solved
+before anything else in Phase 8. The current GSD workflow relies on the human as the
+context recycler -- you `/clear`, open a new terminal, run the next command. Each phase
+gets a fresh context window. Without a human doing this, an autonomous orchestrator
+accumulates context until it degrades or hits limits.
+
+### Why This Matters
+
+- Task subagents already get fresh context (each executor, researcher, verifier runs clean)
+- But the **orchestrator** accumulates everything: state reads, dispatch decisions, results
+- After 3-4 phases of coordinating teams, the orchestrator's context is bloated with stale data
+- No agent can `/clear` itself mid-conversation
+- A team lead accumulates everything its teammates send back
+
+### Candidate Solutions
+
+**Option A: Chain-of-Agents (Recommended)**
+
+A minimal dispatcher reads STATE.md, spawns ONE Task agent to run the next phase,
+waits for it to finish, then spawns ANOTHER Task agent for the next phase. Each
+"phase orchestrator" gets fresh context. The dispatcher stays thin because it only
+holds state + one result at a time.
+
+```
+Dispatcher (thin, stays in context)
+  -> reads STATE.md
+  -> spawns Task("run Phase 3") -- fresh context
+  -> reads Phase 3 SUMMARY.md
+  -> spawns Task("run Phase 4") -- fresh context
+  -> reads Phase 4 SUMMARY.md
+  -> ... continues until milestone done
+```
+
+The dispatcher never does heavy work -- it only reads state, decides what's next,
+spawns a fresh agent, and reads the result. Its context stays small.
+
+**Option B: Self-Terminating Loop**
+
+The orchestrator runs one phase, writes everything to disk (STATE.md, SUMMARY.md),
+then *ends*. A hook or outer script detects completion and launches a new agent that
+reads STATE.md and continues. This automates what the human does manually.
+
+```
+[Hook/Script layer]
+  -> launches Agent 1 -> runs Phase 3 -> writes STATE.md -> exits
+  -> launches Agent 2 -> reads STATE.md -> runs Phase 4 -> exits
+  -> launches Agent 3 -> reads STATE.md -> runs Phase 5 -> exits
+```
+
+Requires external automation (shell script, CI pipeline, or Claude Code hooks).
+
+**Option C: Context-Aware Checkpointing**
+
+The orchestrator monitors its own context usage. When getting heavy, it writes a
+checkpoint to disk and spawns a fresh replacement of itself with instructions to
+"resume from checkpoint." Most complex, least reliable.
+
+### Design Constraint for Phase 8
+
+**The orchestrator must NEVER do heavy work itself.** It should only:
+1. Read STATE.md to determine current position
+2. Decide what to do next (plan, execute, verify)
+3. Spawn a fresh Task agent to do the work
+4. Read the result (SUMMARY.md, VERIFICATION.md)
+5. Update STATE.md
+6. Repeat
+
+This keeps the orchestrator's context small and avoids the degradation problem.
+The "context refresh" happens naturally because each Task agent starts fresh.
+
+Phase 8 should prove this pattern works before adding auto-decisions (which are
+simpler and can be layered on afterward).
+
 ## Risk Assessment
 
 | Risk | Severity | Mitigation |

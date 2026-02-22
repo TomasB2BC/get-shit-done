@@ -20,10 +20,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -47,7 +47,7 @@ if $ARGUMENTS.profile not in ["quality", "balanced", "budget"]:
 
 <step name="ensure_config">
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js config-ensure-section
+node ~/.claude/get-shit-done/bin/gsd-tools.js config-ensure-section
 ```
 
 Creates `.planning/config.json` with defaults if missing.

@@ -6,14 +6,14 @@ Execute a phase prompt (PLAN.md) and create the outcome summary (SUMMARY.md).
 Read STATE.md before any operation to load project context.
 Read config.json for planning behavior settings.
 
-@C:\Users\tomas\.claude/get-shit-done/references/git-integration.md
+@~/.claude/get-shit-done/references/git-integration.md
 </required_reading>
 
 <process>
 
 <step name="resolve_model_profile" priority="first">
 ```bash
-EXECUTOR_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
+EXECUTOR_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
 ```
 </step>
 
@@ -27,7 +27,7 @@ Parse current position, decisions, blockers, alignment. If missing but .planning
 **INVARIANT:** All relative path access (e.g., `.planning/STATE.md`) assumes the cwd is the project root. When invoked via execute-phase.md, Step 0 has already resolved --project and changed cwd. When invoked directly, cwd must already be the project root.
 
 ```bash
-COMMIT_PLANNING_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
+COMMIT_PLANNING_DOCS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```
 
 ```bash
@@ -165,7 +165,7 @@ ls .planning/phases/*/SUMMARY.md 2>/dev/null | sort -r | head -2 | tail -1
 If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers:
 - **If AGENT_MODE=true:** Auto-proceed. Log decision:
   ```bash
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "Previous phase issues found" --decision "Auto-proceed (agent mode)" --rationale "Previous SUMMARY issues detected but agent mode auto-proceeds"
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "Previous phase issues found" --decision "Auto-proceed (agent mode)" --rationale "Previous SUMMARY issues detected but agent mode auto-proceeds"
   ```
 - **If AGENT_MODE=false:** AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
 </step>
@@ -234,7 +234,7 @@ Proceed with proposed change? (yes / different approach / defer)
 
 **If AGENT_MODE=true:** Rule 4 uses auto-decide instead of AskUserQuestion:
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[Rule 4 architectural decision description]" --options '["Proceed with proposed change", "Defer to next phase"]' --raw
+node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[Rule 4 architectural decision description]" --options '["Proceed with proposed change", "Defer to next phase"]' --raw
 ```
 
 **Priority:** Rule 4 (STOP) > Rules 1-3 (auto) > unsure → Rule 4
@@ -267,7 +267,7 @@ For `type: tdd` plans — RED-GREEN-REFACTOR:
 
 Errors: RED doesn't fail → investigate test/existing feature. GREEN doesn't pass → debug, iterate. REFACTOR breaks → undo.
 
-See `C:\Users\tomas\.claude/get-shit-done/references/tdd.md` for structure.
+See `~/.claude/get-shit-done/references/tdd.md` for structure.
 </tdd_plan_execution>
 
 <task_commit>
@@ -325,7 +325,7 @@ Display: `CHECKPOINT: [Type]` box → Progress {X}/{Y} → Task name → type-sp
 **If AGENT_MODE=false (default):**
 After response: verify if specified. Pass → continue. Fail → inform, wait. WAIT for user — do NOT hallucinate completion.
 
-See C:\Users\tomas\.claude/get-shit-done/references/checkpoints.md for details.
+See ~/.claude/get-shit-done/references/checkpoints.md for details.
 </step>
 
 <step name="checkpoint_return_for_orchestrator">
@@ -363,11 +363,11 @@ fi
 grep -A 50 "^user_setup:" .planning/phases/XX-name/{phase}-{plan}-PLAN.md | head -50
 ```
 
-If user_setup exists: create `{phase}-USER-SETUP.md` using template `C:\Users\tomas\.claude/get-shit-done/templates/user-setup.md`. Per service: env vars table, account setup checklist, dashboard config, local dev notes, verification commands. Status "Incomplete". Set `USER_SETUP_CREATED=true`. If empty/missing: skip.
+If user_setup exists: create `{phase}-USER-SETUP.md` using template `~/.claude/get-shit-done/templates/user-setup.md`. Per service: env vars table, account setup checklist, dashboard config, local dev notes, verification commands. Status "Incomplete". Set `USER_SETUP_CREATED=true`. If empty/missing: skip.
 </step>
 
 <step name="create_summary">
-Create `{phase}-{plan}-SUMMARY.md` at `.planning/phases/XX-name/`. Use `C:\Users\tomas\.claude/get-shit-done/templates/summary.md`.
+Create `{phase}-{plan}-SUMMARY.md` at `.planning/phases/XX-name/`. Use `~/.claude/get-shit-done/templates/summary.md`.
 
 **Frontmatter:** phase, plan, subsystem, tags | requires/provides/affects | tech-stack.added/patterns | key-files.created/modified | key-decisions | duration ($DURATION), completed ($PLAN_END_TIME date).
 
@@ -404,7 +404,7 @@ More plans → update plan count, keep "In progress". Last plan → mark phase "
 Task code already committed per-task. Commit plan metadata:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs({phase}-{plan}): complete [plan-name] plan" --files .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs({phase}-{plan}): complete [plan-name] plan" --files .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md
 ```
 </step>
 

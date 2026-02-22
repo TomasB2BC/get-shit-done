@@ -27,7 +27,7 @@ Alias: $ARGUMENTS (optional -- derives from directory name if omitted)
 ## 1. Validate Environment
 
 ```bash
-PLANNING_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw)
+PLANNING_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw)
 ```
 
 **If not found:** Error -- this directory has no `.planning/` directory. Run `/gsd:new-project` first.
@@ -56,7 +56,7 @@ PLANNING_DIR=".planning"
 ## 4. Register Project
 
 ```bash
-RESULT=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js register-project "$ALIAS" --dir "$PLANNING_DIR")
+RESULT=$(node ~/.claude/get-shit-done/bin/gsd-tools.js register-project "$ALIAS" --dir "$PLANNING_DIR")
 echo "$RESULT"
 ```
 

@@ -20,10 +20,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -40,7 +40,7 @@ fi
 Use Bash (not Glob) to check—Glob respects .gitignore but .planning/ is often gitignored:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw
+node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw
 ```
 
 If no `.planning/` directory:
@@ -86,7 +86,7 @@ If missing both ROADMAP.md and PROJECT.md: suggest `/gsd:new-project`.
 - Calculate: total plans, completed plans, remaining plans
 - Note any blockers or concerns
 - Check for CONTEXT.md: For phases without PLAN.md files, check if `{phase}-CONTEXT.md` exists in phase directory
-- Count pending todos: `node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos --raw`
+- Count pending todos: `node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos --raw`
 - Check for active debug sessions: `ls .planning/debug/*.md 2>/dev/null | grep -v resolved | wc -l`
   </step>
 

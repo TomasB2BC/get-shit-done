@@ -40,10 +40,10 @@ Configuration options for `.planning/` directory behavior.
 
 ```bash
 # Commit with automatic commit_docs + gitignore checks:
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: update state" --files .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: update state" --files .planning/STATE.md
 
 # Or read config manually:
-COMMIT_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
+COMMIT_DOCS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```
 
 **Auto-detection:** If `.planning/` is gitignored, `commit_docs` is automatically `false` regardless of config.json. This prevents git errors when users have `.planning/` in `.gitignore`.
@@ -137,7 +137,7 @@ To use uncommitted mode:
 **Checking the config:**
 
 ```bash
-GSD_CONFIG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+GSD_CONFIG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
 BRANCHING_STRATEGY=$(echo "$GSD_CONFIG" | grep '^branching_strategy=' | cut -d= -f2)
 PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cut -d= -f2)
 MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
@@ -308,7 +308,7 @@ When true: workflows check for agent_mode and use auto-decide at each AskUserQue
 **Reading agent_mode:**
 
 ```bash
-AGENT_MODE=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
+AGENT_MODE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
 ```
 
 Or inline in workflow:
@@ -320,7 +320,7 @@ AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:spa
 **Using auto-decide (replaces AskUserQuestion when agent_mode=true):**
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide \
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide \
   --type "scope" \
   --question "Which features for v1?" \
   --options '["All table stakes","Table stakes + differentiators"]' \
@@ -330,7 +330,7 @@ DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decid
 **Using log-decision (for freeform synthesis by workflow agents):**
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type "freeform" \
   --question "What do you want to build?" \
   --decision "Implement agent mode foundation..." \

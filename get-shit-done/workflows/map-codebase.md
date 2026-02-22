@@ -33,10 +33,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -47,7 +47,7 @@ fi
 
 <step name="resolve_model_profile" priority="first">
 ```bash
-MAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-codebase-mapper --raw)
+MAPPER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-codebase-mapper --raw)
 ```
 
 **Detect agent mode:**
@@ -61,7 +61,7 @@ AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:spa
 Check if .planning/codebase/ already exists:
 
 ```bash
-CODEBASE_MAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/codebase --raw)
+CODEBASE_MAP_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/codebase --raw)
 [ "$CODEBASE_MAP_EXISTS" = "true" ] && ls -la .planning/codebase/
 ```
 
@@ -72,7 +72,7 @@ CODEBASE_MAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js
 Auto-decide refresh vs skip:
 
 ```bash
-DECISION=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Codebase map exists. Refresh?" --options '["Refresh - Remap codebase","Skip - Use existing"]' --raw)
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Codebase map exists. Refresh?" --options '["Refresh - Remap codebase","Skip - Use existing"]' --raw)
 ```
 
 If "Refresh": Delete .planning/codebase/, continue to create_structure
@@ -181,9 +181,9 @@ if [ "$AGENT_MODE" = "true" ]; then
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 "
@@ -193,7 +193,7 @@ fi
 **Spawn teammates with auto_mode context prepended:**
 
 ```
-Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read ~/.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -216,7 +216,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="tech"
 )
 
-Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read ~/.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -239,7 +239,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="arch"
 )
 
-Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read ~/.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -262,7 +262,7 @@ Round 2: Read other mappers' documents, update yours based on cross-references.
   name="quality"
 )
 
-Task(prompt="${AUTO_MODE_CONTEXT}First, read C:\Users\tomas\.claude/agents/gsd-codebase-mapper.md for your role and instructions.
+Task(prompt="${AUTO_MODE_CONTEXT}First, read ~/.claude/agents/gsd-codebase-mapper.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>codebase-mapping</team_name>
@@ -414,9 +414,9 @@ if [ "$AGENT_MODE" = "true" ]; then
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
 - Use auto-decide for structured questions:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
 - For freeform questions: generate the answer from codebase context, then log:
-  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
 </auto_mode>
 
 "
@@ -575,7 +575,7 @@ grep -E '(sk-[a-zA-Z0-9]{20,}|sk_live_[a-zA-Z0-9]+|sk_test_[a-zA-Z0-9]+|ghp_[a-z
 Log and auto-proceed (codebase map docs are gitignored):
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
   --type freeform \
   --question "Potential secrets detected in codebase documents. Proceed?" \
   --decision "Auto-proceed - codebase map documents are gitignored" \
@@ -613,7 +613,7 @@ Continue to commit_codebase_map.
 Commit the codebase map:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: map existing codebase" --files .planning/codebase/*.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: map existing codebase" --files .planning/codebase/*.md
 ```
 
 Continue to offer_next.

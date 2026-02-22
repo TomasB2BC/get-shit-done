@@ -47,10 +47,10 @@ if echo "$ARGUMENTS" | grep -q '\-\-project'; then
 fi
 
 if [ -n "$PROJECT_ALIAS" ]; then
-  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
   if [ -z "$PROJECT_DIR" ]; then
     echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
-    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
     # Stop execution
   fi
   PROJECT_ROOT=$(dirname "$PROJECT_DIR")
@@ -398,7 +398,7 @@ Update `.planning/ROADMAP.md` — group completed milestone phases:
 Extract completed milestone details to archive.
 
 1. Create `.planning/milestones/v[X.Y]-ROADMAP.md`
-2. Read `C:\Users\tomas\.claude/get-shit-done/templates/milestone-archive.md` template
+2. Read `~/.claude/get-shit-done/templates/milestone-archive.md` template
 3. Extract from ROADMAP.md: all phases in milestone (by number range), full phase details, plan lists with checkmarks
 4. Extract from PROJECT.md: key decisions, validated requirements
 5. Fill template placeholders: {{VERSION}}, {{MILESTONE_NAME}}, {{DATE}}, {{PHASE_START}}, {{PHASE_END}}, {{TOTAL_PLANS}}, {{MILESTONE_DESCRIPTION}}, {{PHASES_SECTION}}, {{DECISIONS_FROM_PROJECT}}, {{ISSUES_RESOLVED_DURING_MILESTONE}}
@@ -479,7 +479,7 @@ Archive requirements for next milestone.
 Move audit file to archive (if exists):
 
 ```bash
-AUDIT_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/v[X.Y]-MILESTONE-AUDIT.md --raw)
+AUDIT_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/v[X.Y]-MILESTONE-AUDIT.md --raw)
 [ "$AUDIT_EXISTS" = "true" ] && mv .planning/v[X.Y]-MILESTONE-AUDIT.md .planning/milestones/
 ```
 
@@ -527,7 +527,7 @@ Progress: [updated progress bar]
 Check branching strategy and offer merge options.
 
 ```bash
-GSD_CONFIG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+GSD_CONFIG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
 BRANCHING_STRATEGY=$(echo "$GSD_CONFIG" | grep '^branching_strategy=' | cut -d= -f2)
 PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cut -d= -f2)
 MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
@@ -661,7 +661,7 @@ git push origin v[X.Y]
 Commit milestone completion.
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "chore: complete v[X.Y] milestone" --files .planning/milestones/v[X.Y]-ROADMAP.md .planning/milestones/v[X.Y]-REQUIREMENTS.md .planning/milestones/v[X.Y]-MILESTONE-AUDIT.md .planning/MILESTONES.md .planning/PROJECT.md .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "chore: complete v[X.Y] milestone" --files .planning/milestones/v[X.Y]-ROADMAP.md .planning/milestones/v[X.Y]-REQUIREMENTS.md .planning/milestones/v[X.Y]-MILESTONE-AUDIT.md .planning/MILESTONES.md .planning/PROJECT.md .planning/STATE.md
 ```
 ```
 
