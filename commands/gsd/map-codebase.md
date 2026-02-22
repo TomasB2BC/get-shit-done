@@ -1,7 +1,7 @@
 ---
 name: gsd:map-codebase
 description: Analyze codebase with parallel mapper agents to produce .planning/codebase/ documents
-argument-hint: "[optional: specific area to map, e.g., 'api' or 'auth']"
+argument-hint: "[--project <alias>] [optional: specific area to map, e.g., 'api' or 'auth']"
 allowed-tools:
   - Read
   - Bash
@@ -20,7 +20,7 @@ Output: .planning/codebase/ folder with 7 structured documents about the codebas
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/map-codebase.md
+@~/.claude/get-shit-done/workflows/map-codebase.md
 </execution_context>
 
 <context>

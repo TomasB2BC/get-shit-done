@@ -1,7 +1,7 @@
 ---
 name: gsd:insert-phase
 description: Insert urgent work as decimal phase (e.g., 72.1) between existing phases
-argument-hint: <after> <description>
+argument-hint: "[--project <alias>] <after> <description>"
 allowed-tools:
   - Read
   - Write
@@ -17,7 +17,7 @@ Purpose: Handle urgent work discovered during execution without renumbering enti
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/insert-phase.md
+@~/.claude/get-shit-done/workflows/insert-phase.md
 </execution_context>
 
 <context>
@@ -28,6 +28,6 @@ Arguments: $ARGUMENTS (format: <after-phase-number> <description>)
 </context>
 
 <process>
-Execute the insert-phase workflow from @C:\Users\tomas\.claude/get-shit-done/workflows/insert-phase.md end-to-end.
+Execute the insert-phase workflow from @~/.claude/get-shit-done/workflows/insert-phase.md end-to-end.
 Preserve all validation gates (argument parsing, phase verification, decimal calculation, roadmap updates).
 </process>

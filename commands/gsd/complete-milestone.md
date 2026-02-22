@@ -2,7 +2,7 @@
 type: prompt
 name: gsd:complete-milestone
 description: Archive completed milestone and prepare for next version
-argument-hint: <version>
+argument-hint: "[--project <alias>] <version>"
 allowed-tools:
   - Read
   - Write
@@ -19,8 +19,8 @@ Output: Milestone archived (roadmap + requirements), PROJECT.md evolved, git tag
 <execution_context>
 **Load these files NOW (before proceeding):**
 
-- @C:\Users\tomas\.claude/get-shit-done/workflows/complete-milestone.md (main workflow)
-- @C:\Users\tomas\.claude/get-shit-done/templates/milestone-archive.md (archive template)
+- @~/.claude/get-shit-done/workflows/complete-milestone.md (main workflow)
+- @~/.claude/get-shit-done/templates/milestone-archive.md (archive template)
   </execution_context>
 
 <context>

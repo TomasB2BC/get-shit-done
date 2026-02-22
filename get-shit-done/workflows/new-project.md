@@ -8,13 +8,35 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 <process>
 
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 ## 1. Setup
 
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
 
 1. **Abort if project exists:**
    ```bash
-   PROJECT_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/PROJECT.md --raw)
+   PROJECT_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/PROJECT.md --raw)
    [ "$PROJECT_EXISTS" = "true" ] && echo "ERROR: Project already initialized. Use /gsd:progress" && exit 1
    ```
 
@@ -32,11 +54,16 @@ Read all files referenced by the invoking prompt's execution_context before star
    ```bash
    CODE_FILES=$(find . -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" -o -name "*.swift" -o -name "*.java" 2>/dev/null | grep -v node_modules | grep -v .git | head -20)
    HAS_PACKAGE=$([ -f package.json ] || [ -f requirements.txt ] || [ -f Cargo.toml ] || [ -f go.mod ] || [ -f Package.swift ] && echo "yes")
-   HAS_CODEBASE_MAP=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/codebase --raw)
+   HAS_CODEBASE_MAP=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/codebase --raw)
    [ "$HAS_CODEBASE_MAP" = "true" ] && HAS_CODEBASE_MAP="yes"
    ```
 
    **You MUST run all bash commands above using the Bash tool before proceeding.**
+
+4. **Detect agent mode:**
+   ```bash
+   AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+   ```
 
 ## 2. Brownfield Offer
 
@@ -45,6 +72,19 @@ Read all files referenced by the invoking prompt's execution_context before star
 Check the results from setup step:
 - If `CODE_FILES` is non-empty OR `HAS_PACKAGE` is "yes"
 - AND `HAS_CODEBASE_MAP` is NOT "yes"
+
+**If AGENT_MODE=true:**
+
+Auto-decide: Skip mapping (agent mode proceeds directly -- codebase mapping is a separate workflow that can run independently).
+
+Log decision:
+```bash
+node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Map codebase first?" --options '["Skip mapping","Map codebase first"]' --raw
+```
+
+Continue to Step 3.
+
+**If AGENT_MODE=false (classic):**
 
 Use AskUserQuestion:
 - header: "Existing Code"
@@ -72,6 +112,43 @@ Exit command.
  GSD ► QUESTIONING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+**If AGENT_MODE=true:**
+
+Synthesize project description from available context:
+
+1. Check for existing project context files:
+   ```bash
+   [ -f .planning/PROJECT.md ] && HAS_PROJECT="yes"
+   [ -f .planning/ROADMAP.md ] && HAS_ROADMAP="yes"
+   [ -f AGENT-MODE-GSD.md ] && HAS_DESIGN_DOC="yes"
+   ```
+
+2. Read available context sources:
+   - If PROJECT.md exists: read for brownfield project context
+   - If ROADMAP.md exists: read for milestone context
+   - If design docs exist (AGENT-MODE-GSD.md, etc.): read for project vision
+
+3. Generate comprehensive project description synthesizing all available context. Focus on:
+   - What is being built and why
+   - Core value proposition
+   - Key constraints or requirements already known
+   - Milestone or phase context if this is subsequent milestone
+
+4. Log the synthesis:
+   ```bash
+   node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+     --type freeform \
+     --question "What do you want to build?" \
+     --decision "[your synthesized description]" \
+     --rationale "Synthesized from [list of source documents used]"
+   ```
+
+5. Use the synthesized description as if the user had provided it.
+
+6. Skip the follow-up questioning loop -- proceed directly to Step 4 (Write PROJECT.md).
+
+**If AGENT_MODE=false (classic):**
 
 **Open the conversation:**
 
@@ -104,6 +181,14 @@ Consult `questioning.md` for techniques:
 As you go, mentally check the context checklist from `questioning.md`. If gaps remain, weave questions naturally. Don't suddenly switch to checklist mode.
 
 **Decision gate:**
+
+**If AGENT_MODE=true:**
+
+Auto-approve: Create PROJECT.md (agent mode always proceeds).
+
+Skip the "Keep exploring" loop entirely.
+
+**If AGENT_MODE=false (classic):**
 
 When you could write a clear PROJECT.md, use AskUserQuestion:
 
@@ -198,10 +283,44 @@ Do not compress. Capture everything gathered.
 
 ```bash
 mkdir -p .planning
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: initialize project" --files .planning/PROJECT.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: initialize project" --files .planning/PROJECT.md
 ```
 
 ## 5. Workflow Preferences
+
+**If AGENT_MODE=true:**
+
+Use auto-decide for each preference with sensible agent-mode defaults:
+
+```bash
+# Read auto_scope from config for depth decision
+AUTO_SCOPE=$(cat .planning/config.json 2>/dev/null | grep -o '"auto_scope"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "conservative")
+
+# Mode: YOLO (auto-approve, just execute)
+MODE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "How do you want to work?" --options '["YOLO (Recommended)","Interactive"]' --raw)
+
+# Depth: based on auto_scope setting
+if [ "$AUTO_SCOPE" = "comprehensive" ]; then
+  DEPTH="Comprehensive"
+else
+  DEPTH="Standard"
+fi
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type scope --question "How thorough should planning be?" --decision "$DEPTH" --rationale "Based on auto_scope=$AUTO_SCOPE setting"
+
+# Execution: Parallel (always parallel in agent mode)
+EXECUTION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Run plans in parallel?" --options '["Parallel (Recommended)","Sequential"]' --raw)
+
+# Git Tracking: Yes (always track for audit trail)
+GIT_TRACKING=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Commit planning docs to git?" --options '["Yes (Recommended)","No"]' --raw)
+```
+
+Map decisions to config values:
+- Mode: "YOLO" -> `mode: "yolo"`, "Interactive" -> `mode: "interactive"`
+- Depth: "Quick" -> `depth: "quick"`, "Standard" -> `depth: "standard"`, "Comprehensive" -> `depth: "comprehensive"`
+- Execution: "Parallel" -> `parallelization: true`, "Sequential" -> `parallelization: false`
+- Git Tracking: "Yes" -> `commit_docs: true`, "No" -> `commit_docs: false`
+
+**If AGENT_MODE=false (classic):**
 
 **Round 1 — Core workflow settings (4 questions):**
 
@@ -246,6 +365,32 @@ questions: [
   }
 ]
 ```
+
+**If AGENT_MODE=true:**
+
+Use auto-decide defaults for workflow agents (always recommended in agent mode):
+
+```bash
+# Research: Yes (always research in agent mode)
+RESEARCH=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type research --question "Research before planning each phase?" --options '["Yes (Recommended)","No"]' --raw)
+
+# Plan Check: Yes (always verify plans)
+PLAN_CHECK=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Verify plans will achieve their goals?" --options '["Yes (Recommended)","No"]' --raw)
+
+# Verifier: Yes (always verify work)
+VERIFIER=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Verify work satisfies requirements after each phase?" --options '["Yes (Recommended)","No"]' --raw)
+
+# Model Profile: Balanced (default, can be overridden by config)
+MODEL_PROFILE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Which AI models for planning agents?" --options '["Balanced (Recommended)","Quality","Budget"]' --raw)
+```
+
+Map to config:
+- Research: "Yes" -> `workflow.research: true`, "No" -> `workflow.research: false`
+- Plan Check: "Yes" -> `workflow.plan_check: true`, "No" -> `workflow.plan_check: false`
+- Verifier: "Yes" -> `workflow.verifier: true`, "No" -> `workflow.verifier: false`
+- Model Profile: "Balanced" -> `model_profile: "balanced"`, "Quality" -> `model_profile: "quality"`, "Budget" -> `model_profile: "budget"`
+
+**If AGENT_MODE=false (classic):**
 
 **Round 2 — Workflow agents:**
 
@@ -303,6 +448,38 @@ questions: [
 
 Create `.planning/config.json` with all settings:
 
+**If AGENT_MODE=true, include agent_mode and agent_mode_settings:**
+
+```json
+{
+  "mode": "yolo|interactive",
+  "depth": "quick|standard|comprehensive",
+  "parallelization": true|false,
+  "commit_docs": true|false,
+  "model_profile": "quality|balanced|budget",
+  "workflow": {
+    "research": true|false,
+    "plan_check": true|false,
+    "verifier": true|false
+  },
+  "orchestration": "classic",
+  "agent_teams": {
+    "research": false,
+    "debug": false,
+    "verification": false,
+    "codebase_mapping": false
+  },
+  "agent_mode": true,
+  "agent_mode_settings": {
+    "auto_scope": "conservative|comprehensive",
+    "max_phases": null,
+    "max_iterations_per_phase": 3
+  }
+}
+```
+
+**If AGENT_MODE=false, omit agent_mode fields:**
+
 ```json
 {
   "mode": "yolo|interactive",
@@ -335,22 +512,93 @@ Create `.planning/config.json` with all settings:
 **Commit config.json:**
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "chore: add project config" --files .planning/config.json
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "chore: add project config" --files .planning/config.json
 ```
 
 **Note:** Run `/gsd:settings` anytime to update these preferences.
+
+## 5.1. Auto-Registration Check
+
+Check if this project is a sub-project inside a parent project with existing `.planning/`:
+
+```bash
+# Check if parent directories have .planning/PROJECT.md (root project indicator)
+PARENT_PLANNING=""
+SEARCH_DIR=$(dirname "$(pwd)")
+while [ "$SEARCH_DIR" != "/" ] && [ "$SEARCH_DIR" != "." ] && [ ${#SEARCH_DIR} -gt 2 ]; do
+  if [ -f "$SEARCH_DIR/.planning/PROJECT.md" ]; then
+    PARENT_PLANNING="$SEARCH_DIR/.planning"
+    break
+  fi
+  SEARCH_DIR=$(dirname "$SEARCH_DIR")
+done
+```
+
+**If sub-project detected (PARENT_PLANNING is non-empty):**
+
+```bash
+if [ -n "$PARENT_PLANNING" ]; then
+  ALIAS=$(basename "$(pwd)")
+  # Compute relative path from parent root to current .planning/
+  RELATIVE_PLANNING=$(node -e "const path = require('path'); console.log(path.relative('$(dirname \"$PARENT_PLANNING\")', '$(pwd)/.planning').replace(/\\\\/g, '/'))")
+
+  echo ">> Sub-project detected. Auto-registering as '$ALIAS'"
+  echo ">> Parent project: $PARENT_PLANNING"
+
+  # Register in parent's projects.json
+  ORIG_DIR=$(pwd)
+  cd "$(dirname "$PARENT_PLANNING")"
+  REGISTER_RESULT=$(node ~/.claude/get-shit-done/bin/gsd-tools.js register-project "$ALIAS" --dir "$RELATIVE_PLANNING" --raw)
+  cd "$ORIG_DIR"
+
+  if [ "$REGISTER_RESULT" = "registered" ] || [ "$REGISTER_RESULT" = "already_registered" ]; then
+    echo "[OK] Registered as '$ALIAS' in $(dirname "$PARENT_PLANNING")/projects.json"
+    echo "Use: /gsd:execute-phase 1 --project $ALIAS"
+  else
+    echo "[!] WARNING: Auto-registration failed: $REGISTER_RESULT"
+    echo "You can register manually: /gsd:register-project"
+  fi
+fi
+```
+
+**If agent_mode=true and sub-project detected, log the decision:**
+
+```bash
+if [ "$AGENT_MODE" = "true" ] && [ -n "$PARENT_PLANNING" ]; then
+  ORIG_DIR=$(pwd)
+  cd "$(dirname "$PARENT_PLANNING")"
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Should the new sub-project at $(basename "$ORIG_DIR") be auto-registered?" \
+    --decision "Auto-registered as '$ALIAS' in parent projects.json" \
+    --rationale "Sub-project detected (parent has .planning/PROJECT.md). Alias derived from directory name per CONTEXT.md locked decision."
+  cd "$ORIG_DIR"
+fi
+```
+
+**If no parent project detected:** Skip (this is a root-level project).
 
 ## 5.5. Resolve Model Profile
 
 Read model profile for agent spawning:
 
 ```bash
-RESEARCHER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-project-researcher --raw)
-SYNTHESIZER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-research-synthesizer --raw)
-ROADMAPPER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-roadmapper --raw)
+RESEARCHER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-project-researcher --raw)
+SYNTHESIZER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-research-synthesizer --raw)
+ROADMAPPER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-roadmapper --raw)
 ```
 
 ## 6. Research Decision
+
+**If AGENT_MODE=true:**
+
+```bash
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type research --question "Research the domain ecosystem before defining requirements?" --options '["Research first (Recommended)","Skip research"]' --raw)
+```
+
+Proceed based on decision (agent mode defaults to research).
+
+**If AGENT_MODE=false (classic):**
 
 Use AskUserQuestion:
 - header: "Research"
@@ -442,7 +690,7 @@ If TeamCreate fails, display warning and set FALLBACK_TO_CLASSIC=true:
 Spawn all 4 in parallel using Task with team_name and name parameters:
 
 ```
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>project-research</team_name>
@@ -482,12 +730,12 @@ Your STACK.md feeds into roadmap creation. Be prescriptive:
 
 <output>
 Write to: .planning/research/STACK.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/STACK.md
+Use template: ~/.claude/get-shit-done/templates/research-project/STACK.md
 Do NOT commit -- orchestrator commits all files.
 </output>
 ", team_name="project-research", name="stack-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Stack research with debate")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>project-research</team_name>
@@ -527,12 +775,12 @@ Your FEATURES.md feeds into requirements definition. Categorize clearly:
 
 <output>
 Write to: .planning/research/FEATURES.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/FEATURES.md
+Use template: ~/.claude/get-shit-done/templates/research-project/FEATURES.md
 Do NOT commit -- orchestrator commits all files.
 </output>
 ", team_name="project-research", name="features-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Features research with debate")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>project-research</team_name>
@@ -572,12 +820,12 @@ Your ARCHITECTURE.md informs phase structure in roadmap. Include:
 
 <output>
 Write to: .planning/research/ARCHITECTURE.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
+Use template: ~/.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
 Do NOT commit -- orchestrator commits all files.
 </output>
 ", team_name="project-research", name="architecture-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Architecture research with debate")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>project-research</team_name>
@@ -617,7 +865,7 @@ Your PITFALLS.md prevents mistakes in roadmap/planning. For each pitfall:
 
 <output>
 Write to: .planning/research/PITFALLS.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/PITFALLS.md
+Use template: ~/.claude/get-shit-done/templates/research-project/PITFALLS.md
 Do NOT commit -- orchestrator commits all files.
 </output>
 ", team_name="project-research", name="pitfalls-researcher", subagent_type="general-purpose", model="{researcher_model}", description="Pitfalls research with debate")
@@ -716,7 +964,7 @@ Read all 4 final files and write SUMMARY.md directly:
 1. Read .planning/research/STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
 2. Check for remaining contradictions between files
 3. Note confidence levels based on debate outcomes
-4. Write .planning/research/SUMMARY.md using template at C:\Users\tomas\.claude/get-shit-done/templates/research-project/SUMMARY.md
+4. Write .planning/research/SUMMARY.md using template at ~/.claude/get-shit-done/templates/research-project/SUMMARY.md
 5. Include in SUMMARY.md metadata: "Research mode: hybrid (Agent Teams with 2-round debate)"
 
 **Step H8: Clean up team**
@@ -728,7 +976,7 @@ TeamDelete()
 **Step H9: Commit and continue**
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: complete project research (hybrid mode)" --files .planning/research/STACK.md .planning/research/FEATURES.md .planning/research/ARCHITECTURE.md .planning/research/PITFALLS.md .planning/research/SUMMARY.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: complete project research (hybrid mode)" --files .planning/research/STACK.md .planning/research/FEATURES.md .planning/research/ARCHITECTURE.md .planning/research/PITFALLS.md .planning/research/SUMMARY.md
 ```
 
 Continue to research complete banner.
@@ -757,7 +1005,7 @@ Display spawning indicator:
 Spawn 4 parallel gsd-project-researcher agents with rich context:
 
 ```
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <research_type>
 Project Research — Stack dimension for [domain].
@@ -793,11 +1041,11 @@ Your STACK.md feeds into roadmap creation. Be prescriptive:
 
 <output>
 Write to: .planning/research/STACK.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/STACK.md
+Use template: ~/.claude/get-shit-done/templates/research-project/STACK.md
 </output>
 ", subagent_type="general-purpose", model="{researcher_model}", description="Stack research")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <research_type>
 Project Research — Features dimension for [domain].
@@ -833,11 +1081,11 @@ Your FEATURES.md feeds into requirements definition. Categorize clearly:
 
 <output>
 Write to: .planning/research/FEATURES.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/FEATURES.md
+Use template: ~/.claude/get-shit-done/templates/research-project/FEATURES.md
 </output>
 ", subagent_type="general-purpose", model="{researcher_model}", description="Features research")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <research_type>
 Project Research — Architecture dimension for [domain].
@@ -873,11 +1121,11 @@ Your ARCHITECTURE.md informs phase structure in roadmap. Include:
 
 <output>
 Write to: .planning/research/ARCHITECTURE.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
+Use template: ~/.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
 </output>
 ", subagent_type="general-purpose", model="{researcher_model}", description="Architecture research")
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-project-researcher.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
 <research_type>
 Project Research — Pitfalls dimension for [domain].
@@ -913,7 +1161,7 @@ Your PITFALLS.md prevents mistakes in roadmap/planning. For each pitfall:
 
 <output>
 Write to: .planning/research/PITFALLS.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/PITFALLS.md
+Use template: ~/.claude/get-shit-done/templates/research-project/PITFALLS.md
 </output>
 ", subagent_type="general-purpose", model="{researcher_model}", description="Pitfalls research")
 ```
@@ -936,7 +1184,7 @@ Read these files:
 
 <output>
 Write to: .planning/research/SUMMARY.md
-Use template: C:\Users\tomas\.claude/get-shit-done/templates/research-project/SUMMARY.md
+Use template: ~/.claude/get-shit-done/templates/research-project/SUMMARY.md
 Commit after writing.
 </output>
 ", subagent_type="gsd-research-synthesizer", model="{synthesizer_model}", description="Synthesize research")
@@ -1012,6 +1260,31 @@ For each capability mentioned:
 - Group into categories
 
 **Scope each category:**
+
+**If AGENT_MODE=true:**
+
+For each category, use auto-decide multiSelect:
+
+```bash
+# Build JSON array of feature options for this category
+FEATURES_JSON='["[Feature 1]","[Feature 2]","[Feature 3]","None for v1"]'
+
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type multiSelect --question "Which [category] features for v1?" --options "$FEATURES_JSON" --raw)
+```
+
+The auto-decide multiSelect rule applies:
+- Conservative (default): Selects all except "None"/"Skip"/"Defer" items
+- Comprehensive: Selects all items including differentiators
+
+Track auto-decided selections as v1 requirements.
+
+For the "Additions" question, auto-decide binary selects "No, research covered it":
+
+```bash
+ADDITIONS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Any requirements research missed?" --options '["No, research covered it","Yes, let me add some"]' --raw)
+```
+
+**If AGENT_MODE=false (classic):**
 
 For each category, use AskUserQuestion:
 
@@ -1092,7 +1365,7 @@ If "adjust": Return to scoping.
 **Commit requirements:**
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: define v1 requirements" --files .planning/REQUIREMENTS.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: define v1 requirements" --files .planning/REQUIREMENTS.md
 ```
 
 ## 8. Create Roadmap
@@ -1187,6 +1460,18 @@ Success criteria:
 ---
 ```
 
+**If AGENT_MODE=true:**
+
+Auto-approve roadmap:
+
+```bash
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Does this roadmap structure work for you?" --options '["Approve","Adjust phases","Review full file"]' --raw)
+```
+
+Skip revision loop. Proceed to commit.
+
+**If AGENT_MODE=false (classic):**
+
 **CRITICAL: Ask for approval before committing:**
 
 Use AskUserQuestion:
@@ -1223,7 +1508,7 @@ Use AskUserQuestion:
 **Commit roadmap (after approval):**
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: create roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: create roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
 ```
 
 ## 9. Done

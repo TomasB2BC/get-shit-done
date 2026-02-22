@@ -1,6 +1,7 @@
 ---
 name: gsd:help
 description: Show available GSD commands and usage guide
+argument-hint: "[--project <alias>]"
 ---
 <objective>
 Display the complete GSD command reference.
@@ -13,10 +14,10 @@ Output ONLY the reference content below. Do NOT add:
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/help.md
+@~/.claude/get-shit-done/workflows/help.md
 </execution_context>
 
 <process>
-Output the complete GSD command reference from @C:\Users\tomas\.claude/get-shit-done/workflows/help.md.
+Output the complete GSD command reference from @~/.claude/get-shit-done/workflows/help.md.
 Display the reference content directly — no additions or modifications.
 </process>

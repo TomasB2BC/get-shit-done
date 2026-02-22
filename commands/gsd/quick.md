@@ -1,7 +1,7 @@
 ---
 name: gsd:quick
 description: Execute a quick task with GSD guarantees (atomic commits, state tracking) but skip optional agents
-argument-hint: ""
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Write
@@ -25,7 +25,7 @@ Use when: You know exactly what to do and the task is small enough to not need r
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/quick.md
+@~/.claude/get-shit-done/workflows/quick.md
 </execution_context>
 
 <context>
@@ -33,6 +33,6 @@ Use when: You know exactly what to do and the task is small enough to not need r
 </context>
 
 <process>
-Execute the quick workflow from @C:\Users\tomas\.claude/get-shit-done/workflows/quick.md end-to-end.
+Execute the quick workflow from @~/.claude/get-shit-done/workflows/quick.md end-to-end.
 Preserve all workflow gates (validation, task description, planning, execution, state updates, commits).
 </process>

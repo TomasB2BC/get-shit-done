@@ -7,11 +7,34 @@ Read all files referenced by the invoking prompt's execution_context before star
 </required_reading>
 
 <process>
-**Step 0: Resolve Model Profile**
+
+## 0. Project Resolution
 
 ```bash
-PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
-EXECUTOR_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
+**Step 0.1: Resolve Model Profile**
+
+```bash
+PLANNER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
+EXECUTOR_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
 ```
 
 ---
@@ -21,7 +44,7 @@ EXECUTOR_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js reso
 Check that an active GSD project exists:
 
 ```bash
-ROADMAP_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
+ROADMAP_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw)
 if [ "$ROADMAP_EXISTS" != "true" ]; then
   echo "Quick mode requires an active project with ROADMAP.md."
   echo "Run /gsd:new-project first."
@@ -53,7 +76,7 @@ If empty, re-prompt: "Please provide a task description."
 
 Generate slug from description:
 ```bash
-slug=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$DESCRIPTION" --raw | cut -c1-40)
+slug=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$DESCRIPTION" --raw | cut -c1-40)
 ```
 
 ---
@@ -200,14 +223,14 @@ Insert after `### Blockers/Concerns` section:
 **7c. Append new row to table:**
 
 ```markdown
-| ${next_num} | ${DESCRIPTION} | $(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw) | ${commit_hash} | [${next_num}-${slug}](./quick/${next_num}-${slug}/) |
+| ${next_num} | ${DESCRIPTION} | $(node ~/.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw) | ${commit_hash} | [${next_num}-${slug}](./quick/${next_num}-${slug}/) |
 ```
 
 **7d. Update "Last activity" line:**
 
 Find and update the line:
 ```
-Last activity: $(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw) - Completed quick task ${next_num}: ${DESCRIPTION}
+Last activity: $(node ~/.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw) - Completed quick task ${next_num}: ${DESCRIPTION}
 ```
 
 Use Edit tool to make these changes atomically
@@ -219,7 +242,7 @@ Use Edit tool to make these changes atomically
 Stage and commit quick task artifacts:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs(quick-${next_num}): ${DESCRIPTION}" --files ${QUICK_DIR}/${next_num}-PLAN.md ${QUICK_DIR}/${next_num}-SUMMARY.md .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs(quick-${next_num}): ${DESCRIPTION}" --files ${QUICK_DIR}/${next_num}-PLAN.md ${QUICK_DIR}/${next_num}-SUMMARY.md .planning/STATE.md
 ```
 
 Get final commit hash:

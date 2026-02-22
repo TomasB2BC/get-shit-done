@@ -6,14 +6,14 @@ Execute a phase prompt (PLAN.md) and create the outcome summary (SUMMARY.md).
 Read STATE.md before any operation to load project context.
 Read config.json for planning behavior settings.
 
-@C:\Users\tomas\.claude/get-shit-done/references/git-integration.md
+@~/.claude/get-shit-done/references/git-integration.md
 </required_reading>
 
 <process>
 
 <step name="resolve_model_profile" priority="first">
 ```bash
-EXECUTOR_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
+EXECUTOR_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
 ```
 </step>
 
@@ -24,8 +24,15 @@ cat .planning/STATE.md 2>/dev/null
 
 Parse current position, decisions, blockers, alignment. If missing but .planning/ exists: offer reconstruct or continue. If .planning/ missing: error.
 
+**INVARIANT:** All relative path access (e.g., `.planning/STATE.md`) assumes the cwd is the project root. When invoked via execute-phase.md, Step 0 has already resolved --project and changed cwd. When invoked directly, cwd must already be the project root.
+
 ```bash
-COMMIT_PLANNING_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
+COMMIT_PLANNING_DOCS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
+```
+
+```bash
+# Direct agent-mode detection (self-contained, not reliant on parent prompt injection)
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
 ```
 </step>
 
@@ -73,6 +80,37 @@ grep -n "type=\"checkpoint" .planning/phases/XX-name/{phase}-{plan}-PLAN.md
 | Decision | C (main) | Execute entirely in main context |
 
 **Pattern A:** init_agent_tracking → spawn Task(subagent_type="gsd-executor", model=executor_model) with prompt: execute plan at [path], autonomous, all tasks + SUMMARY + commit, follow deviation/auth rules, report: plan name, tasks, SUMMARY path, commit hash → track agent_id → wait → update tracking → report.
+
+Before spawning any subagent (Pattern A or B), run context discovery:
+
+```bash
+# Context Discovery for subagent prompts
+CLAUDE_CONTEXT=""
+if [ -f "CLAUDE.md" ]; then
+  CLAUDE_CONTEXT="## Project Instructions (CLAUDE.md)\n$(cat CLAUDE.md)\n\n"
+fi
+
+# Scoped CLAUDE.md from plan's files_modified directories
+SCOPED_DIRS=$(grep "^files_modified:" "{plan_path}" -A 50 | sed -n '/^files_modified:/,/^[a-z]/p' | grep "^\s*-" | sed 's/^\s*-\s*//' | xargs -I{} dirname {} | sort -u)
+for dir in $SCOPED_DIRS; do
+  check_dir="$dir"
+  while [ "$check_dir" != "." ] && [ "$check_dir" != "/" ]; do
+    if [ -f "$check_dir/CLAUDE.md" ] && [ "$check_dir/CLAUDE.md" != "CLAUDE.md" ]; then
+      CLAUDE_CONTEXT="${CLAUDE_CONTEXT}## Scoped Instructions ($check_dir/CLAUDE.md)\n$(cat "$check_dir/CLAUDE.md")\n\n"
+      break
+    fi
+    check_dir=$(dirname "$check_dir")
+  done
+done
+
+SKILLS_CONTEXT=""
+if [ -d ".claude/skills" ]; then
+  SKILLS_LIST=$(ls -1 .claude/skills/ 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+  SKILLS_CONTEXT="## Available Skills\nSkills in .claude/skills/: ${SKILLS_LIST}\nRead SKILL.md for any relevant skill before starting work.\n"
+fi
+```
+
+Include CLAUDE_CONTEXT and SKILLS_CONTEXT in all subagent prompts (Pattern A autonomous, Pattern B segment subagents).
 
 **Pattern B:** Execute segment-by-segment. Autonomous segments: spawn subagent for assigned tasks only (no SUMMARY/commit). Checkpoints: main context. After all segments: aggregate, create SUMMARY, commit. See segment_execution.
 
@@ -124,7 +162,12 @@ This IS the execution instructions. Follow exactly. If plan references CONTEXT.m
 ```bash
 ls .planning/phases/*/SUMMARY.md 2>/dev/null | sort -r | head -2 | tail -1
 ```
-If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers: AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
+If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers:
+- **If AGENT_MODE=true:** Auto-proceed. Log decision:
+  ```bash
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "Previous phase issues found" --decision "Auto-proceed (agent mode)" --rationale "Previous SUMMARY issues detected but agent mode auto-proceeds"
+  ```
+- **If AGENT_MODE=false:** AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
 </step>
 
 <step name="execute">
@@ -189,6 +232,11 @@ Alternatives: [other approaches]
 Proceed with proposed change? (yes / different approach / defer)
 ```
 
+**If AGENT_MODE=true:** Rule 4 uses auto-decide instead of AskUserQuestion:
+```bash
+node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[Rule 4 architectural decision description]" --options '["Proceed with proposed change", "Defer to next phase"]' --raw
+```
+
 **Priority:** Rule 4 (STOP) > Rules 1-3 (auto) > unsure → Rule 4
 **Edge cases:** missing validation → R2 | null crash → R1 | new table → R4 | new column → R1/2
 **Heuristic:** Affects correctness/security/completion? → R1-3. Maybe? → R4.
@@ -219,7 +267,7 @@ For `type: tdd` plans — RED-GREEN-REFACTOR:
 
 Errors: RED doesn't fail → investigate test/existing feature. GREEN doesn't pass → debug, iterate. REFACTOR breaks → undo.
 
-See `C:\Users\tomas\.claude/get-shit-done/references/tdd.md` for structure.
+See `~/.claude/get-shit-done/references/tdd.md` for structure.
 </tdd_plan_execution>
 
 <task_commit>
@@ -269,9 +317,15 @@ Display: `CHECKPOINT: [Type]` box → Progress {X}/{Y} → Task name → type-sp
 | decision (9%) | Decision needed + context + options with pros/cons | "Select: option-id" |
 | human-action (1%) | What was automated + ONE manual step + verification plan | "done" |
 
+**If AGENT_MODE=true:** Auto-handle checkpoints by type:
+- human-verify: Auto-approve, log via auto-decide
+- decision: Use auto-decide with checkpoint options
+- human-action: HALT (cannot perform human-only actions)
+
+**If AGENT_MODE=false (default):**
 After response: verify if specified. Pass → continue. Fail → inform, wait. WAIT for user — do NOT hallucinate completion.
 
-See C:\Users\tomas\.claude/get-shit-done/references/checkpoints.md for details.
+See ~/.claude/get-shit-done/references/checkpoints.md for details.
 </step>
 
 <step name="checkpoint_return_for_orchestrator">
@@ -309,11 +363,11 @@ fi
 grep -A 50 "^user_setup:" .planning/phases/XX-name/{phase}-{plan}-PLAN.md | head -50
 ```
 
-If user_setup exists: create `{phase}-USER-SETUP.md` using template `C:\Users\tomas\.claude/get-shit-done/templates/user-setup.md`. Per service: env vars table, account setup checklist, dashboard config, local dev notes, verification commands. Status "Incomplete". Set `USER_SETUP_CREATED=true`. If empty/missing: skip.
+If user_setup exists: create `{phase}-USER-SETUP.md` using template `~/.claude/get-shit-done/templates/user-setup.md`. Per service: env vars table, account setup checklist, dashboard config, local dev notes, verification commands. Status "Incomplete". Set `USER_SETUP_CREATED=true`. If empty/missing: skip.
 </step>
 
 <step name="create_summary">
-Create `{phase}-{plan}-SUMMARY.md` at `.planning/phases/XX-name/`. Use `C:\Users\tomas\.claude/get-shit-done/templates/summary.md`.
+Create `{phase}-{plan}-SUMMARY.md` at `.planning/phases/XX-name/`. Use `~/.claude/get-shit-done/templates/summary.md`.
 
 **Frontmatter:** phase, plan, subsystem, tags | requires/provides/affects | tech-stack.added/patterns | key-files.created/modified | key-decisions | duration ($DURATION), completed ($PLAN_END_TIME date).
 
@@ -350,7 +404,7 @@ More plans → update plan count, keep "In progress". Last plan → mark phase "
 Task code already committed per-task. Commit plan metadata:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs({phase}-{plan}): complete [plan-name] plan" --files .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs({phase}-{plan}): complete [plan-name] plan" --files .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md
 ```
 </step>
 

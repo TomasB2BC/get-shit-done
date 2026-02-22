@@ -1,7 +1,7 @@
 ---
 name: gsd:new-milestone
 description: Start a new milestone cycle — update PROJECT.md and route to requirements
-argument-hint: "[milestone name, e.g., 'v1.1 Notifications']"
+argument-hint: "[--project <alias>] [milestone name, e.g., 'v1.1 Notifications']"
 allowed-tools:
   - Read
   - Write
@@ -25,11 +25,11 @@ Brownfield equivalent of new-project. Project exists, PROJECT.md has history. Ga
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/new-milestone.md
-@C:\Users\tomas\.claude/get-shit-done/references/questioning.md
-@C:\Users\tomas\.claude/get-shit-done/references/ui-brand.md
-@C:\Users\tomas\.claude/get-shit-done/templates/project.md
-@C:\Users\tomas\.claude/get-shit-done/templates/requirements.md
+@~/.claude/get-shit-done/workflows/new-milestone.md
+@~/.claude/get-shit-done/references/questioning.md
+@~/.claude/get-shit-done/references/ui-brand.md
+@~/.claude/get-shit-done/templates/project.md
+@~/.claude/get-shit-done/templates/requirements.md
 </execution_context>
 
 <context>
@@ -46,6 +46,6 @@ Milestone name: $ARGUMENTS (optional - will prompt if not provided)
 </context>
 
 <process>
-Execute the new-milestone workflow from @C:\Users\tomas\.claude/get-shit-done/workflows/new-milestone.md end-to-end.
+Execute the new-milestone workflow from @~/.claude/get-shit-done/workflows/new-milestone.md end-to-end.
 Preserve all workflow gates (validation, questioning, research, requirements, roadmap approval, commits).
 </process>

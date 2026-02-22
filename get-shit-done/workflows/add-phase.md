@@ -8,6 +8,32 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 <process>
 
+<step name="project_resolution">
+
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
+</step>
+
 <step name="parse_arguments">
 Parse the command arguments:
 - All arguments become the phase description
@@ -29,7 +55,7 @@ Exit.
 Load the roadmap file:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw
+node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning/ROADMAP.md --raw
 ```
 
 If false:
@@ -78,7 +104,7 @@ Format as two-digit: `printf "%02d" $next_phase`
 Convert the phase description to a kebab-case slug:
 
 ```bash
-slug=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$description" --raw)
+slug=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$description" --raw)
 ```
 
 Phase directory name: `{two-digit-phase}-{slug}`

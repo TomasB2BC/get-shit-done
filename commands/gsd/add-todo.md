@@ -1,7 +1,7 @@
 ---
 name: gsd:add-todo
 description: Capture idea or task as todo from current conversation context
-argument-hint: [optional description]
+argument-hint: "[--project <alias>] [optional description]"
 allowed-tools:
   - Read
   - Write
@@ -24,11 +24,11 @@ Routes to the add-todo workflow which handles:
 
 <execution_context>
 @.planning/STATE.md
-@C:\Users\tomas\.claude/get-shit-done/workflows/add-todo.md
+@~/.claude/get-shit-done/workflows/add-todo.md
 </execution_context>
 
 <process>
-**Follow the add-todo workflow** from `@C:\Users\tomas\.claude/get-shit-done/workflows/add-todo.md`.
+**Follow the add-todo workflow** from `@~/.claude/get-shit-done/workflows/add-todo.md`.
 
 The workflow handles all logic including:
 1. Directory ensuring

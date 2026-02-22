@@ -13,6 +13,10 @@
  *   state update <field> <value>       Update a STATE.md field
  *   resolve-model <agent-type>         Get model for agent based on profile
  *   find-phase <phase>                 Find phase directory by number
+ *   list-phases                        List all phase numbers sorted numerically
+ *   resolve-project <alias>            Resolve project alias to planning dir
+ *   register-project [alias] [--dir]   Register current project
+ *   list-projects                      List all registered projects
  *   commit <message> [--files f1 f2]   Commit planning docs
  *   verify-summary <path>              Verify a SUMMARY.md file
  */
@@ -52,6 +56,21 @@ function loadConfig(cwd) {
     plan_checker: true,
     verifier: true,
     parallelization: true,
+    agent_mode: false,
+    agent_mode_settings: {
+      auto_scope: 'conservative',
+      max_phases: null,
+      max_iterations_per_phase: 3,
+      budget_tokens_per_phase: 500000,
+      autonomy_level: 'auto-decide',
+    },
+    orchestration: 'classic',
+    agent_teams: {
+      research: false,
+      debug: false,
+      verification: false,
+      codebase_mapping: false,
+    },
   };
 
   try {
@@ -73,6 +92,17 @@ function loadConfig(cwd) {
       return defaults.parallelization;
     })();
 
+    const agentModeSettings = (() => {
+      const settings = parsed.agent_mode_settings || {};
+      return {
+        auto_scope: settings.auto_scope ?? defaults.agent_mode_settings.auto_scope,
+        max_phases: settings.max_phases ?? defaults.agent_mode_settings.max_phases,
+        max_iterations_per_phase: settings.max_iterations_per_phase ?? defaults.agent_mode_settings.max_iterations_per_phase,
+        budget_tokens_per_phase: settings.budget_tokens_per_phase ?? defaults.agent_mode_settings.budget_tokens_per_phase,
+        autonomy_level: settings.autonomy_level ?? defaults.agent_mode_settings.autonomy_level,
+      };
+    })();
+
     return {
       model_profile: get('model_profile') ?? defaults.model_profile,
       commit_docs: get('commit_docs', { section: 'planning', field: 'commit_docs' }) ?? defaults.commit_docs,
@@ -84,6 +114,18 @@ function loadConfig(cwd) {
       plan_checker: get('plan_checker', { section: 'workflow', field: 'plan_check' }) ?? defaults.plan_checker,
       verifier: get('verifier', { section: 'workflow', field: 'verifier' }) ?? defaults.verifier,
       parallelization,
+      agent_mode: parsed.agent_mode ?? defaults.agent_mode,
+      agent_mode_settings: agentModeSettings,
+      orchestration: get('orchestration') ?? defaults.orchestration,
+      agent_teams: (() => {
+        const at = parsed.agent_teams || {};
+        return {
+          research: at.research ?? defaults.agent_teams.research,
+          debug: at.debug ?? defaults.agent_teams.debug,
+          verification: at.verification ?? defaults.agent_teams.verification,
+          codebase_mapping: at.codebase_mapping ?? defaults.agent_teams.codebase_mapping,
+        };
+      })(),
     };
   } catch {
     return defaults;
@@ -144,6 +186,51 @@ function output(result, raw, rawValue) {
 function error(message) {
   process.stderr.write('Error: ' + message + '\n');
   process.exit(1);
+}
+
+function logAutoDecision(cwd, entry) {
+  const logPath = path.join(cwd, '.planning', 'AUTO-DISPATCH-LOG.md');
+
+  let content = '';
+  try {
+    content = fs.readFileSync(logPath, 'utf-8');
+  } catch {
+    // Create new log file with header
+    content = '# Auto-Dispatch Log\n\n**Started:** ' + new Date().toISOString() + '\n\n## Decisions\n\n';
+  }
+
+  // Tiered verbosity per CONTEXT.md locked decision:
+  // compact one-liners for standard rule-based, verbose for synthetic/skipped, verbose for architectural
+  let logEntry;
+  if (entry.architectural) {
+    // Verbose format for architectural decisions routed to lead via AskUserQuestion
+    logEntry = '### ARCHITECTURAL: ' + entry.type.toUpperCase() + '\n' +
+      '[' + entry.timestamp + '] LEAD PROMPT: "' + entry.question + '"\n' +
+      '  Response: ' + (entry.response || '(pending)') + '\n' +
+      '  Wait time: ' + (entry.wait_time !== undefined ? entry.wait_time + 's' : 'N/A') + '\n' +
+      '  Delegated: ' + (entry.delegated ? 'yes' : 'no') + '\n\n';
+  } else if (entry.synthetic || entry.decision === null) {
+    // Verbose format for synthetic and skipped decisions
+    logEntry = '### ' + (entry.synthetic ? 'SYNTHETIC' : 'SKIPPED') + ': ' + entry.type.toUpperCase() + '\n' +
+      '[' + entry.timestamp + '] ' + entry.type.toUpperCase() + ': "' + entry.question + '"\n' +
+      '  Decision: ' + (entry.decision || '(skipped)') + '\n' +
+      '  Rationale: ' + entry.rationale + '\n\n';
+  } else {
+    // Compact one-liner for rule-based decisions
+    logEntry = '[' + entry.timestamp + '] ' + entry.type.toUpperCase() + ': "' + entry.question + '" -> "' +
+      (typeof entry.decision === 'string' ? entry.decision : JSON.stringify(entry.decision)) +
+      '" (' + entry.rationale + ')\n';
+  }
+
+  // Insert before Summary section if it exists, otherwise append
+  const summaryIdx = content.indexOf('## Summary');
+  if (summaryIdx >= 0) {
+    content = content.slice(0, summaryIdx) + logEntry + '\n' + content.slice(summaryIdx);
+  } else {
+    content += logEntry;
+  }
+
+  fs.writeFileSync(logPath, content, 'utf-8');
 }
 
 // ─── Commands ─────────────────────────────────────────────────────────────────
@@ -316,6 +403,17 @@ function cmdStateLoad(cwd, raw) {
       `research=${c.research}`,
       `plan_checker=${c.plan_checker}`,
       `verifier=${c.verifier}`,
+      `agent_mode=${c.agent_mode}`,
+      `auto_scope=${c.agent_mode_settings.auto_scope}`,
+      `max_phases=${c.agent_mode_settings.max_phases}`,
+      `max_iterations_per_phase=${c.agent_mode_settings.max_iterations_per_phase}`,
+      `budget_tokens_per_phase=${c.agent_mode_settings.budget_tokens_per_phase}`,
+      `autonomy_level=${c.agent_mode_settings.autonomy_level}`,
+      `orchestration=${c.orchestration}`,
+      `agent_teams_research=${c.agent_teams.research}`,
+      `agent_teams_debug=${c.agent_teams.debug}`,
+      `agent_teams_verification=${c.agent_teams.verification}`,
+      `agent_teams_codebase_mapping=${c.agent_teams.codebase_mapping}`,
       `config_exists=${configExists}`,
       `roadmap_exists=${roadmapExists}`,
       `state_exists=${stateExists}`,
@@ -410,6 +508,44 @@ function cmdFindPhase(cwd, phase, raw) {
     output(result, raw, result.directory);
   } catch {
     output(notFound, raw, '');
+  }
+}
+
+function cmdListPhases(cwd, raw) {
+  const phasesDir = path.join(cwd, '.planning', 'phases');
+
+  try {
+    const entries = fs.readdirSync(phasesDir, { withFileTypes: true });
+    const dirs = entries.filter(e => e.isDirectory());
+
+    // Extract phase numbers from directory names
+    const phases = [];
+    for (const dir of dirs) {
+      const match = dir.name.match(/^(\d+(?:\.\d+)?)-/);
+      if (match) {
+        phases.push(match[1]);
+      }
+    }
+
+    // Sort numerically (integer part first, then decimal part)
+    phases.sort((a, b) => {
+      const aParts = a.split('.').map(Number);
+      const bParts = b.split('.').map(Number);
+      if (aParts[0] !== bParts[0]) return aParts[0] - bParts[0];
+      return (aParts[1] || 0) - (bParts[1] || 0);
+    });
+
+    // Deduplicate (multiple dirs with same phase number)
+    const unique = [...new Set(phases)];
+
+    const result = {
+      phases: unique,
+      count: unique.length
+    };
+
+    output(result, raw, unique.join('\n'));
+  } catch {
+    output({ phases: [], count: 0 }, raw, '');
   }
 }
 
@@ -556,6 +692,314 @@ function cmdVerifySummary(cwd, summaryPath, checkFileCount, raw) {
   output(result, raw, passed ? 'passed' : 'failed');
 }
 
+function cmdAutoDecide(cwd, questionType, question, options, context, raw) {
+  if (!questionType || !question) {
+    error('type and question required for auto-decide');
+  }
+
+  const config = loadConfig(cwd);
+  const agentSettings = config.agent_mode_settings || {};
+  const autoScope = agentSettings.auto_scope || 'conservative';
+
+  let decision;
+  let rationale;
+  let synthetic = false;
+  let needsAgentSynthesis = false;
+  let optionIndex = 0;
+
+  const optionsList = options ? (typeof options === 'string' ? JSON.parse(options) : options) : [];
+
+  switch (questionType) {
+    case 'scope':
+      optionIndex = autoScope === 'comprehensive' ? Math.min(1, optionsList.length - 1) : 0;
+      decision = optionsList[optionIndex] || optionsList[0];
+      rationale = 'Scoping rule (auto_scope=' + autoScope + ')';
+      break;
+
+    case 'approval':
+      decision = optionsList[0] || 'Approve';
+      rationale = 'Auto-approve (no failure indicators)';
+      break;
+
+    case 'research':
+      const researchYes = optionsList.findIndex(function(o) {
+        const label = typeof o === 'string' ? o : (o.label || '');
+        return /research|yes|recommended/i.test(label);
+      });
+      optionIndex = researchYes >= 0 ? researchYes : 0;
+      decision = optionsList[optionIndex];
+      rationale = 'Always research in agent mode';
+      break;
+
+    case 'binary':
+      optionIndex = 0;
+      decision = optionsList[0];
+      rationale = 'Binary: selected recommended option (first)';
+      break;
+
+    case 'multiSelect':
+      if (autoScope === 'comprehensive') {
+        decision = optionsList;
+      } else {
+        decision = optionsList.filter(function(o) {
+          const label = typeof o === 'string' ? o : (o.label || '');
+          return !/none|skip|defer/i.test(label);
+        });
+        if (decision.length === 0) decision = [optionsList[0]];
+      }
+      rationale = 'Multi-select (auto_scope=' + autoScope + ')';
+      break;
+
+    case 'freeform':
+      decision = null;
+      needsAgentSynthesis = true;
+      rationale = 'Freeform question requires LLM synthesis';
+      break;
+
+    default:
+      optionIndex = 0;
+      decision = optionsList[0] || null;
+      rationale = 'Default rule: first option for unknown type "' + questionType + '"';
+  }
+
+  // Validate option index bounds (structured types only)
+  if (!needsAgentSynthesis && optionsList.length > 0) {
+    if (optionIndex >= optionsList.length) {
+      optionIndex = 0;
+      decision = optionsList[0];
+      rationale += ' (FALLBACK: option index out of bounds)';
+    }
+  }
+
+  // Log structured decisions (freeform logged by workflow after synthesis)
+  if (!needsAgentSynthesis) {
+    logAutoDecision(cwd, {
+      timestamp: new Date().toISOString(),
+      type: questionType,
+      question: question,
+      decision: decision,
+      optionIndex: optionIndex,
+      rationale: rationale,
+      synthetic: false,
+    });
+  }
+
+  const result = {
+    decision: decision,
+    option_index: optionIndex,
+    rationale: rationale,
+    synthetic: synthetic,
+    needs_agent_synthesis: needsAgentSynthesis,
+    logged: !needsAgentSynthesis,
+  };
+
+  const rawValue = needsAgentSynthesis ? 'NEEDS_SYNTHESIS' : (typeof decision === 'string' ? decision : JSON.stringify(decision));
+  output(result, raw, rawValue);
+}
+
+function cmdLogDecision(cwd, decisionType, question, decision, rationale, raw, response, waitTime) {
+  if (!decisionType || !question || decision === undefined || !rationale) {
+    error('type, question, decision, and rationale required for log-decision');
+  }
+
+  const entry = {
+    timestamp: new Date().toISOString(),
+    type: decisionType,
+    question: question,
+    decision: decision,
+    rationale: rationale,
+  };
+
+  if (decisionType === 'architectural') {
+    entry.architectural = true;
+    if (response) entry.response = response;
+    if (waitTime !== undefined) entry.wait_time = waitTime;
+  } else {
+    entry.synthetic = true;
+  }
+
+  logAutoDecision(cwd, entry);
+
+  const result = { logged: true };
+  output(result, raw, 'logged');
+}
+
+// ─── Project Alias Resolution ─────────────────────────────────────────────────
+
+function resolveProject(cwd, alias) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    const projects = JSON.parse(raw);
+
+    if (!projects[alias]) {
+      const available = Object.keys(projects);
+      const availableStr = available.length > 0 ? available.join(', ') : '(none)';
+      return {
+        found: false,
+        alias,
+        planning_dir: null,
+        error: 'Alias "' + alias + '" not found. Available: ' + availableStr
+      };
+    }
+
+    const entry = projects[alias];
+    const planningDir = entry.planning_dir || entry;
+    const resolved = path.resolve(cwd, planningDir).replace(/\\/g, '/');
+
+    return {
+      found: true,
+      alias,
+      planning_dir: resolved
+    };
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return {
+        found: false,
+        alias,
+        planning_dir: null,
+        error: 'No projects registered. Run /gsd:register-project first.'
+      };
+    }
+    return {
+      found: false,
+      alias,
+      planning_dir: null,
+      error: 'Error reading projects.json: ' + err.message
+    };
+  }
+}
+
+function registerProject(cwd, alias, planningDir) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  // Read existing or create empty
+  let projects = {};
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    projects = JSON.parse(raw);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      return { registered: false, error: 'Error reading projects.json: ' + err.message };
+    }
+    // File doesn't exist, start fresh
+  }
+
+  // Normalize planning_dir for comparison
+  const normalizedDir = planningDir.replace(/\\/g, '/');
+
+  // Check if alias already exists
+  if (projects[alias]) {
+    const existingDir = (projects[alias].planning_dir || projects[alias]).replace(/\\/g, '/');
+    if (existingDir === normalizedDir) {
+      return { registered: true, reason: 'already_registered' };
+    }
+    return {
+      registered: false,
+      error: 'Alias "' + alias + '" already registered to: ' + existingDir
+    };
+  }
+
+  // Validate the planning_dir exists
+  const resolvedDir = path.resolve(cwd, planningDir);
+  if (!fs.existsSync(resolvedDir)) {
+    return {
+      registered: false,
+      error: 'Planning directory does not exist: ' + planningDir
+    };
+  }
+
+  // Register
+  projects[alias] = {
+    planning_dir: normalizedDir,
+    registered: new Date().toISOString()
+  };
+
+  // Ensure .planning directory exists
+  const planningParent = path.join(cwd, '.planning');
+  if (!fs.existsSync(planningParent)) {
+    fs.mkdirSync(planningParent, { recursive: true });
+  }
+
+  fs.writeFileSync(projectsPath, JSON.stringify(projects, null, 2), 'utf-8');
+
+  return {
+    registered: true,
+    reason: 'new_registration',
+    alias,
+    planning_dir: normalizedDir
+  };
+}
+
+function listProjects(cwd) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    const projects = JSON.parse(raw);
+
+    const projectList = Object.keys(projects).map(alias => ({
+      alias,
+      planning_dir: projects[alias].planning_dir || projects[alias],
+      registered: projects[alias].registered || 'unknown'
+    }));
+
+    return { projects: projectList, count: projectList.length };
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return { projects: [], count: 0 };
+    }
+    return { projects: [], count: 0, error: err.message };
+  }
+}
+
+function cmdResolveProject(cwd, alias, raw) {
+  if (!alias) {
+    error('alias required for resolve-project');
+  }
+
+  const result = resolveProject(cwd, alias);
+  output(result, raw, result.found ? result.planning_dir : '');
+}
+
+function cmdRegisterProject(cwd, alias, planningDir, raw) {
+  // Derive alias from directory name if not provided
+  if (!alias) {
+    alias = path.basename(cwd);
+  }
+
+  // Default planning dir to current .planning/
+  if (!planningDir) {
+    planningDir = '.planning';
+  }
+
+  const result = registerProject(cwd, alias, planningDir);
+
+  if (raw) {
+    if (result.registered) {
+      process.stdout.write(result.reason);
+    } else {
+      process.stdout.write('error');
+    }
+    process.exit(0);
+  }
+
+  output(result);
+}
+
+function cmdListProjects(cwd, raw) {
+  const result = listProjects(cwd);
+
+  if (raw) {
+    const aliases = result.projects.map(p => p.alias);
+    process.stdout.write(aliases.join('\n'));
+    process.exit(0);
+  }
+
+  output(result);
+}
+
 // ─── CLI Router ───────────────────────────────────────────────────────────────
 
 function main() {
@@ -568,7 +1012,7 @@ function main() {
   const cwd = process.cwd();
 
   if (!command) {
-    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, commit, verify-summary, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
+    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, list-phases, resolve-project, register-project, list-projects, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
   }
 
   switch (command) {
@@ -589,6 +1033,29 @@ function main() {
 
     case 'find-phase': {
       cmdFindPhase(cwd, args[1], raw);
+      break;
+    }
+
+    case 'list-phases': {
+      cmdListPhases(cwd, raw);
+      break;
+    }
+
+    case 'resolve-project': {
+      cmdResolveProject(cwd, args[1], raw);
+      break;
+    }
+
+    case 'register-project': {
+      const alias = args[1] && !args[1].startsWith('--') ? args[1] : null;
+      const dirIndex = args.indexOf('--dir');
+      const planningDir = dirIndex !== -1 ? args[dirIndex + 1] : null;
+      cmdRegisterProject(cwd, alias, planningDir, raw);
+      break;
+    }
+
+    case 'list-projects': {
+      cmdListProjects(cwd, raw);
       break;
     }
 
@@ -631,6 +1098,43 @@ function main() {
 
     case 'config-ensure-section': {
       cmdConfigEnsureSection(cwd, raw);
+      break;
+    }
+
+    case 'auto-decide': {
+      // Parse arguments: --type <type> --question <question> [--options '<json>'] [--context '<json>']
+      const typeIndex = args.indexOf('--type');
+      const questionIndex = args.indexOf('--question');
+      const optionsIndex = args.indexOf('--options');
+      const contextIndex = args.indexOf('--context');
+
+      const questionType = typeIndex !== -1 ? args[typeIndex + 1] : null;
+      const question = questionIndex !== -1 ? args[questionIndex + 1] : null;
+      const options = optionsIndex !== -1 ? args[optionsIndex + 1] : null;
+      const context = contextIndex !== -1 ? args[contextIndex + 1] : null;
+
+      cmdAutoDecide(cwd, questionType, question, options, context, raw);
+      break;
+    }
+
+    case 'log-decision': {
+      // Parse arguments: --type <type> --question <question> --decision <decision> --rationale <rationale>
+      // Optional: --response <response> --wait-time <seconds> (for architectural type)
+      const typeIndex = args.indexOf('--type');
+      const questionIndex = args.indexOf('--question');
+      const decisionIndex = args.indexOf('--decision');
+      const rationaleIndex = args.indexOf('--rationale');
+      const responseIndex = args.indexOf('--response');
+      const waitTimeIndex = args.indexOf('--wait-time');
+
+      const decisionType = typeIndex !== -1 ? args[typeIndex + 1] : null;
+      const question = questionIndex !== -1 ? args[questionIndex + 1] : null;
+      const decision = decisionIndex !== -1 ? args[decisionIndex + 1] : null;
+      const rationale = rationaleIndex !== -1 ? args[rationaleIndex + 1] : null;
+      const response = responseIndex !== -1 ? args[responseIndex + 1] : null;
+      const waitTime = waitTimeIndex !== -1 ? args[waitTimeIndex + 1] : null;
+
+      cmdLogDecision(cwd, decisionType, question, decision, rationale, raw, response, waitTime);
       break;
     }
 

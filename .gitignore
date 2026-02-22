@@ -17,3 +17,4 @@ hooks/dist/
 # Animation assets
 animation/
 *.gif
+.work/

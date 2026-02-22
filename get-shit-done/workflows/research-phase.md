@@ -8,14 +8,37 @@ Standalone research command. For most workflows, use `/gsd:plan-phase` which int
 
 ## Step 0: Resolve Model Profile
 
-@C:\Users\tomas\.claude/get-shit-done/references/model-profile-resolution.md
+@~/.claude/get-shit-done/references/model-profile-resolution.md
 
 Resolve model for:
 - `gsd-phase-researcher`
 
+
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 ## Step 1: Normalize and Validate Phase
 
-@C:\Users\tomas\.claude/get-shit-done/references/phase-argument-parsing.md
+@~/.claude/get-shit-done/references/phase-argument-parsing.md
 
 ```bash
 grep -A5 "Phase ${PHASE}:" .planning/ROADMAP.md 2>/dev/null
@@ -97,7 +120,7 @@ Each with `<mode>teammate</mode>`, `<team_name>`, and `<role>` tags.
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-{padded_phase}-research</team_name>
@@ -136,7 +159,7 @@ Round 3: Finalize RESEARCH.md with a 'Dissenting Views / Risks & Alternatives' s
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-{padded_phase}-research</team_name>
@@ -175,7 +198,7 @@ Round 2: Review teammates' RESEARCH.md and ${PHASE}-EXPLORER-NOTES.md, refine yo
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-{padded_phase}-research</team_name>

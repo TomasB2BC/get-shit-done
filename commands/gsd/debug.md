@@ -1,7 +1,7 @@
 ---
 name: gsd:debug
 description: Systematic debugging with persistent state across context resets
-argument-hint: [issue description]
+argument-hint: "[--project <alias>] [issue description]"
 allowed-tools:
   - Read
   - Bash
@@ -31,10 +31,40 @@ ls .planning/debug/*.md 2>/dev/null | grep -v resolved | head -5
 ## 0. Resolve Model Profile
 
 ```bash
-DEBUGGER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-debugger --raw)
+DEBUGGER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-debugger --raw)
+```
+
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
 ```
 
 ## 1. Check Active Sessions
+
+**If AGENT_MODE=true AND active sessions exist AND no $ARGUMENTS:**
+
+Auto-select most recent active session:
+
+```bash
+ACTIVE_SESSIONS=$(ls .planning/debug/*.md 2>/dev/null | grep -v resolved)
+if [ -n "$ACTIVE_SESSIONS" ] && [ -z "$ARGUMENTS" ]; then
+  # Select most recent session (last modified)
+  LATEST_SESSION=$(ls -t .planning/debug/*.md 2>/dev/null | grep -v resolved | head -1)
+  ISSUE_SLUG=$(basename "$LATEST_SESSION" .md)
+
+  # Log auto-selection
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Select debug session to resume" \
+    --decision "$ISSUE_SLUG" \
+    --rationale "Most recent active session (auto-selected in agent mode)"
+
+  # Continue with selected session
+fi
+```
+
+**If AGENT_MODE=false (classic):**
 
 If active sessions exist AND no $ARGUMENTS:
 - List sessions with status, hypothesis, next action
@@ -44,6 +74,77 @@ If $ARGUMENTS provided OR user describes new issue:
 - Continue to symptom gathering
 
 ## 2. Gather Symptoms (if new issue)
+
+**If AGENT_MODE=true:**
+
+Auto-gather symptoms from project state:
+
+```bash
+# Step 1: Read STATE.md blockers/concerns
+BLOCKERS=""
+if [ -f .planning/STATE.md ]; then
+  BLOCKERS=$(sed -n '/^### Blockers\/Concerns/,/^##/p' .planning/STATE.md)
+fi
+
+# Step 2: Search for error patterns
+ERROR_LOGS=$(grep -r "error\|Error\|ERROR" . --include="*.log" --include="*.txt" 2>/dev/null | head -20 || echo "")
+
+# Step 3: Check recent git log for fix/wip commits
+RECENT_FIXES=$(git log --oneline -10 | grep -i "fix\|wip\|bug" 2>/dev/null || echo "")
+
+# Step 4: Check for HALT.md files
+HALT_FILES=$(find .planning -name "HALT.md" 2>/dev/null)
+
+# Step 5: Use $ARGUMENTS as primary symptom if provided
+PRIMARY_SYMPTOM="$ARGUMENTS"
+
+# Synthesize symptoms
+if [ -n "$PRIMARY_SYMPTOM" ] || [ -n "$BLOCKERS" ] || [ -n "$ERROR_LOGS" ] || [ -n "$RECENT_FIXES" ] || [ -n "$HALT_FILES" ]; then
+  # Compose 5 symptom answers based on available context
+  EXPECTED="Based on project goals and requirements"
+  ACTUAL="$PRIMARY_SYMPTOM"
+  ERRORS="From logs: ${ERROR_LOGS:-none}"
+  TIMELINE="Recent commits suggest: ${RECENT_FIXES:-unknown}"
+  REPRODUCTION="$PRIMARY_SYMPTOM"
+
+  # Log decision
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Debug symptoms gathered" \
+    --decision "Expected: $EXPECTED | Actual: $ACTUAL | Errors: $ERRORS | Timeline: $TIMELINE | Reproduction: $REPRODUCTION" \
+    --rationale "Synthesized from STATE.md, error logs, git history, HALT files, and arguments"
+else
+  # Insufficient info for auto-debugging
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Auto-debug symptoms" \
+    --decision "SKIPPED" \
+    --rationale "Insufficient context in project state for automated symptom gathering"
+
+  # Write HALT.md
+  mkdir -p .planning/debug
+  cat > .planning/debug/HALT.md <<'EOF'
+---
+status: blocked
+reason: insufficient_context
+---
+
+# Debug Halted
+
+Agent mode cannot auto-gather debug symptoms. Insufficient context in:
+- STATE.md blockers/concerns
+- Error logs
+- Git history
+- HALT files
+- Command arguments
+
+**Required:** Run /gsd:debug with explicit issue description, or switch to classic mode for interactive symptom gathering.
+EOF
+  exit 1
+fi
+```
+
+**If AGENT_MODE=false (classic):**
 
 Use AskUserQuestion for each:
 
@@ -143,6 +244,16 @@ Each investigator gets technique-specific guidance to avoid anchoring:
 
 ```markdown
 # Investigator 1 prompt (Binary Search)
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Investigate issue: {slug}
 
@@ -214,6 +325,16 @@ Task(
 
 ```markdown
 # Investigator 2 prompt (Working Backwards)
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Investigate issue: {slug}
 
@@ -286,6 +407,16 @@ Task(
 
 ```markdown
 # Investigator 3 prompt (Differential Debugging)
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Investigate issue: {slug}
 
@@ -549,6 +680,16 @@ If `USE_HYBRID=false` OR `FALLBACK_TO_CLASSIC=true`, use single-agent investigat
 Fill prompt and spawn:
 
 ```markdown
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Investigate issue: {slug}
 
@@ -585,29 +726,139 @@ Task(
 ## 4. Handle Agent Return
 
 **If `## ROOT CAUSE FOUND`:**
-- Display root cause and evidence summary
-- Offer options:
-  - "Fix now" - spawn fix subagent
-  - "Plan fix" - suggest /gsd:plan-phase --gaps
-  - "Manual fix" - done
+
+**If AGENT_MODE=true:**
+
+Auto-decide next action (default: Fix now):
+
+```bash
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Root cause found. Fix now or plan fix?" --options '["Fix now","Plan fix"]' --raw)
+
+if [ "$DECISION" = "Fix now" ]; then
+  # Spawn fix subagent
+  # [existing fix agent spawn logic]
+else
+  # Log plan suggestion
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Next action after root cause found" \
+    --decision "Plan fix using /gsd:plan-phase --gaps" \
+    --rationale "Auto-decided to plan rather than immediate fix"
+fi
+```
+
+**If AGENT_MODE=false (classic):**
+
+Display root cause and evidence summary. Offer options:
+- "Fix now" - spawn fix subagent
+- "Plan fix" - suggest /gsd:plan-phase --gaps
+- "Manual fix" - done
+
+---
 
 **If `## CHECKPOINT REACHED`:**
-- Present checkpoint details to user
-- Get user response
-- Spawn continuation agent (see step 5)
+
+**If AGENT_MODE=true:**
+
+Auto-handle checkpoint by type:
+
+```bash
+# Read checkpoint type from agent return
+CHECKPOINT_TYPE=$(grep "^**Type:**" debug_output.md | sed 's/.*Type:\*\* //')
+
+case "$CHECKPOINT_TYPE" in
+  human-verify)
+    # Auto-approve verification checkpoint
+    node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Checkpoint: human-verify" --options '["Approved"]' --raw
+    # Spawn continuation agent with approval
+    ;;
+  decision)
+    # Use auto-decide with checkpoint options
+    CHECKPOINT_OPTIONS=$(grep "^**Options:**" debug_output.md | sed 's/.*Options:\*\* //')
+    DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Checkpoint decision" --options "$CHECKPOINT_OPTIONS" --raw)
+    # Spawn continuation agent with decision
+    ;;
+  human-action)
+    # HALT - cannot proceed without human
+    mkdir -p .planning/debug
+    cat > .planning/debug/HALT.md <<'EOF'
+---
+status: blocked
+reason: human_action_required
+checkpoint_type: human-action
+---
+
+# Debug Halted: Human Action Required
+
+Agent mode cannot complete human-only actions (email verification, 2FA codes, physical device access, etc.).
+
+**Checkpoint Details:**
+[Details from agent return]
+
+**Required Action:**
+[Action from agent return]
+
+**After Action:**
+Run: [Verification command from agent return]
+
+Then resume with: /gsd:debug [issue-slug]
+EOF
+    exit 1
+    ;;
+esac
+```
+
+**If AGENT_MODE=false (classic):**
+
+Present checkpoint details to user. Get user response. Spawn continuation agent (see step 5).
+
+---
 
 **If `## INVESTIGATION INCONCLUSIVE`:**
-- Show what was checked and eliminated
-- Offer options:
-  - "Continue investigating" - spawn new agent with additional context
-  - "Manual investigation" - done
-  - "Add more context" - gather more symptoms, spawn again
+
+**If AGENT_MODE=true:**
+
+Auto-decide to continue or add context (default: Continue):
+
+```bash
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "Investigation inconclusive. Continue or add context?" --options '["Continue investigating","Add more context"]' --raw)
+
+if [ "$DECISION" = "Continue investigating" ]; then
+  # Spawn new agent with additional context
+  # [existing continuation logic]
+else
+  # Log need for more context and halt
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Investigation inconclusive outcome" \
+    --decision "Need more context" \
+    --rationale "Automated investigation exhausted available context"
+  exit 1
+fi
+```
+
+**If AGENT_MODE=false (classic):**
+
+Show what was checked and eliminated. Offer options:
+- "Continue investigating" - spawn new agent with additional context
+- "Manual investigation" - done
+- "Add more context" - gather more symptoms, spawn again
 
 ## 5. Spawn Continuation Agent (After Checkpoint)
 
-When user responds to checkpoint, spawn fresh agent:
+When user responds to checkpoint (or agent-mode auto-handles), spawn fresh agent:
 
 ```markdown
+{IF AGENT_MODE=true, prepend:}
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from codebase context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Continue debugging {slug}. Evidence is in the debug file.
 </objective>

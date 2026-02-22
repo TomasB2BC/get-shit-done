@@ -8,6 +8,32 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 <process>
 
+<step name="project_resolution">
+
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
+</step>
+
 <step name="ensure_directory">
 ```bash
 mkdir -p .planning/todos/pending .planning/todos/done
@@ -16,7 +42,7 @@ mkdir -p .planning/todos/pending .planning/todos/done
 
 <step name="check_existing_areas">
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos | grep -oP '"area":\s*"\K[^"]+' | sort -u
+node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos | grep -oP '"area":\s*"\K[^"]+' | sort -u
 ```
 
 Note existing areas for consistency in infer_area step.
@@ -77,9 +103,9 @@ If overlapping, use AskUserQuestion:
 
 <step name="create_file">
 ```bash
-timestamp=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js current-timestamp full --raw)
-date_prefix=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw)
-slug=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$title" --raw)
+timestamp=$(node ~/.claude/get-shit-done/bin/gsd-tools.js current-timestamp full --raw)
+date_prefix=$(node ~/.claude/get-shit-done/bin/gsd-tools.js current-timestamp date --raw)
+slug=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$title" --raw)
 ```
 
 Write to `.planning/todos/pending/${date_prefix}-${slug}.md`:
@@ -106,7 +132,7 @@ files:
 <step name="update_state">
 If `.planning/STATE.md` exists:
 
-1. Count todos: `node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js list-todos --raw`
+1. Count todos: `node ~/.claude/get-shit-done/bin/gsd-tools.js list-todos --raw`
 2. Update "### Pending Todos" under "## Accumulated Context"
 </step>
 
@@ -114,7 +140,7 @@ If `.planning/STATE.md` exists:
 Commit the todo and any updated state:
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: capture todo - [title]" --files .planning/todos/pending/[filename] .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: capture todo - [title]" --files .planning/todos/pending/[filename] .planning/STATE.md
 ```
 
 Tool respects `commit_docs` config and gitignore automatically.

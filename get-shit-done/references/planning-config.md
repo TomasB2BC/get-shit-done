@@ -40,10 +40,10 @@ Configuration options for `.planning/` directory behavior.
 
 ```bash
 # Commit with automatic commit_docs + gitignore checks:
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs: update state" --files .planning/STATE.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs: update state" --files .planning/STATE.md
 
 # Or read config manually:
-COMMIT_DOCS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
+COMMIT_DOCS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^commit_docs=' | cut -d= -f2)
 ```
 
 **Auto-detection:** If `.planning/` is gitignored, `commit_docs` is automatically `false` regardless of config.json. This prevents git errors when users have `.planning/` in `.gitignore`.
@@ -137,7 +137,7 @@ To use uncommitted mode:
 **Checking the config:**
 
 ```bash
-GSD_CONFIG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+GSD_CONFIG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
 BRANCHING_STRATEGY=$(echo "$GSD_CONFIG" | grep '^branching_strategy=' | cut -d= -f2)
 PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cut -d= -f2)
 MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
@@ -281,5 +281,66 @@ fi
 **Graceful fallback:** When hybrid conditions are not fully met, commands fall back to classic mode silently (with a one-time warning). This ensures GSD never breaks due to missing env var or config.
 
 </hybrid_detection_pattern>
+
+<agent_mode_config>
+
+**Field:** `agent_mode`
+**Type:** boolean, default: false
+**Location:** top-level in .planning/config.json
+
+**Purpose:** Enables agent mode -- auto-decide replaces AskUserQuestion in workflows
+
+When false: all workflows behave exactly as classic mode (v1.12.0-hybrid behavior preserved)
+When true: workflows check for agent_mode and use auto-decide at each AskUserQuestion callsite
+
+**Field:** `agent_mode_settings`
+**Type:** object, top-level in .planning/config.json
+
+**Sub-fields:**
+
+| Sub-field | Type | Default | Description |
+|-----------|------|---------|-------------|
+| auto_scope | string | "conservative" | Scoping aggressiveness: "conservative" (table stakes only) or "comprehensive" (include differentiators) |
+| max_phases | number or null | null | Maximum phases per /gsd:auto run. null = full milestone loop |
+| max_iterations_per_phase | number | 3 | Max plan-execute-verify cycles before halting |
+| budget_tokens_per_phase | number | 500000 | Maximum estimated tokens per phase before halt |
+
+**Reading agent_mode:**
+
+```bash
+AGENT_MODE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
+```
+
+Or inline in workflow:
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
+
+**Using auto-decide (replaces AskUserQuestion when agent_mode=true):**
+
+```bash
+DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide \
+  --type "scope" \
+  --question "Which features for v1?" \
+  --options '["All table stakes","Table stakes + differentiators"]' \
+  --raw)
+```
+
+**Using log-decision (for freeform synthesis by workflow agents):**
+
+```bash
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  --type "freeform" \
+  --question "What do you want to build?" \
+  --decision "Implement agent mode foundation..." \
+  --rationale "Synthesized from PROJECT.md + ROADMAP.md"
+```
+
+**Orthogonality with hybrid mode:**
+
+Note that agent_mode and orchestration are independent dimensions. agent_mode controls HOW decisions are made (human vs auto). orchestration controls HOW agents coordinate (classic Task vs hybrid Agent Teams). They compose cleanly without special interaction.
+
+</agent_mode_config>
 
 </planning_config>

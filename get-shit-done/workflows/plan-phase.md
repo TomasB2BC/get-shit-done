@@ -5,15 +5,41 @@ Create executable phase prompts (PLAN.md files) for a roadmap phase with integra
 <required_reading>
 Read all files referenced by the invoking prompt's execution_context before starting.
 
-@C:\Users\tomas\.claude/get-shit-done/references/ui-brand.md
+@~/.claude/get-shit-done/references/ui-brand.md
 </required_reading>
 
 <process>
 
+
+## 0. Project Resolution
+
+```bash
+# INVARIANT: No workflow step may resolve relative paths (e.g., .planning/*)
+# before Step 0 completes. Step 0 may change cwd via `cd "$PROJECT_ROOT"`.
+# All relative path access must occur in named steps after Step 0.
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 ## 1. Validate Environment and Resolve Model Profile
 
 ```bash
-PLANNING_EXISTS=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw)
+PLANNING_EXISTS=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify-path-exists .planning --raw)
 echo "$PLANNING_EXISTS"
 ```
 
@@ -22,9 +48,15 @@ echo "$PLANNING_EXISTS"
 **Resolve models:**
 
 ```bash
-RESEARCHER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-phase-researcher --raw)
-PLANNER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
-CHECKER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
+RESEARCHER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-phase-researcher --raw)
+PLANNER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-planner --raw)
+CHECKER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-plan-checker --raw)
+```
+
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
 ```
 
 ## 2. Parse and Normalize Arguments
@@ -36,15 +68,15 @@ Extract from $ARGUMENTS: phase number (integer or decimal like `2.1`), flags (`-
 **Find phase directory:**
 
 ```bash
-PHASE_INFO=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE")
+PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE")
 PHASE_DIR=$(echo "$PHASE_INFO" | grep -o '"directory":"[^"]*"' | cut -d'"' -f4)
 ```
 
 If `found` is false, validate phase exists in ROADMAP.md. If valid, create the directory:
 ```bash
 PHASE_NAME=$(grep "Phase ${PHASE}:" .planning/ROADMAP.md | sed 's/.*Phase [0-9]*: //')
-PHASE_SLUG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
-PADDED=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw | grep -o '^[0-9]*' || printf "%02d" "$PHASE")
+PHASE_SLUG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
+PADDED=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$PHASE" --raw | grep -o '^[0-9]*' || printf "%02d" "$PHASE")
 mkdir -p ".planning/phases/${PADDED}-${PHASE_SLUG}"
 PHASE_DIR=".planning/phases/${PADDED}-${PHASE_SLUG}"
 ```
@@ -79,7 +111,7 @@ If CONTEXT.md exists, display: `Using phase context from: ${PHASE_DIR}/*-CONTEXT
 **Skip if:** `--gaps` flag, `--skip-research` flag, or config `workflow.research=false` (without `--research` override).
 
 ```bash
-WORKFLOW_RESEARCH=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^research=' | cut -d= -f2)
+WORKFLOW_RESEARCH=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^research=' | cut -d= -f2)
 ```
 
 **If RESEARCH.md exists AND no `--research` flag:** Use existing, skip to step 6.
@@ -105,7 +137,18 @@ DECISIONS=$(grep -A20 "### Decisions Made" .planning/STATE.md 2>/dev/null)
 
 Research prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context to research prompt:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <objective>
 Research how to implement Phase {phase_number}: {phase_name}
 Answer: "What do I need to know to PLAN this phase well?"
@@ -130,6 +173,8 @@ IMPORTANT: If CONTEXT.md exists below, it contains user decisions from /gsd:disc
 Write to: {phase_dir}/{phase}-RESEARCH.md
 </output>
 ```
+
+**If AGENT_MODE=false, use research prompt without auto_mode context.**
 
 ### Detect Orchestration Mode
 
@@ -200,7 +245,7 @@ Spawn all 3 in parallel. Each Task prompt includes:
 **Optimist teammate:**
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>optimist</role>\n\n" + research_prompt,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>optimist</role>\n\n" + research_prompt,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Research Phase {phase} (optimist)",
@@ -212,7 +257,7 @@ Task(
 **Devil's Advocate teammate:**
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>devil's-advocate</role>\n\n" + research_prompt_modified_for_advocate,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>devil's-advocate</role>\n\n" + research_prompt_modified_for_advocate,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Research Phase {phase} (devil's advocate)",
@@ -231,7 +276,7 @@ Write to: {phase_dir}/${PADDED_PHASE}-ADVOCATE-NOTES.md
 **Explorer teammate:**
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>explorer</role>\n\n" + research_prompt_modified_for_explorer,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n<mode>teammate</mode>\n<team_name>${TEAM_NAME}</team_name>\n<role>explorer</role>\n\n" + research_prompt_modified_for_explorer,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Research Phase {phase} (explorer)",
@@ -365,7 +410,7 @@ TeamDelete(team_name="${TEAM_NAME}")
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + research_prompt,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + research_prompt,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Research Phase {phase}"
@@ -411,7 +456,18 @@ Display banner:
 
 Planner prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <planning_context>
 **Phase:** {phase_number}
 **Mode:** {standard | gap_closure}
@@ -452,7 +508,7 @@ Output consumed by /gsd:execute-phase. Plans need:
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-planner.md for your role and instructions.\n\n" + filled_prompt,
+  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + filled_prompt,
   subagent_type="general-purpose",
   model="{planner_model}",
   description="Plan Phase {phase}"
@@ -463,7 +519,7 @@ Task(
 
 - **`## PLANNING COMPLETE`:** Display plan count. If `--skip-verify` or config `workflow.plan_check=false`: skip to step 13. Otherwise: step 10.
   ```bash
-  WORKFLOW_PLAN_CHECK=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^plan_checker=' | cut -d= -f2)
+  WORKFLOW_PLAN_CHECK=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^plan_checker=' | cut -d= -f2)
   ```
 - **`## CHECKPOINT REACHED`:** Present to user, get response, spawn continuation (step 12)
 - **`## PLANNING INCONCLUSIVE`:** Show attempts, offer: Add context / Retry / Manual
@@ -485,7 +541,18 @@ PLANS_CONTENT=$(cat "${PHASE_DIR}"/*-PLAN.md 2>/dev/null)
 
 Checker prompt:
 
+**If AGENT_MODE=true, prepend auto_mode context:**
+
 ```markdown
+<auto_mode>
+You are running in GSD agent mode. For ALL decisions:
+- Do NOT call AskUserQuestion
+- Use auto-decide for structured questions:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+- For freeform questions: generate the answer from project context, then log:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+</auto_mode>
+
 <verification_context>
 **Phase:** {phase_number}
 **Phase Goal:** {goal from ROADMAP}
@@ -558,7 +625,7 @@ Return what changed.
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-planner.md for your role and instructions.\n\n" + revision_prompt,
+  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + revision_prompt,
   subagent_type="general-purpose",
   model="{planner_model}",
   description="Revise Phase {phase} plans"

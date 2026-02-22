@@ -1,7 +1,7 @@
 ---
 name: gsd:research-phase
 description: Research how to implement a phase (standalone - usually use /gsd:plan-phase instead)
-argument-hint: "[phase]"
+argument-hint: "[--project <alias>] [phase]"
 allowed-tools:
   - Read
   - Bash
@@ -34,13 +34,13 @@ Normalize phase input in step 1 before any directory lookups.
 ## 0. Resolve Model Profile
 
 ```bash
-RESEARCHER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-phase-researcher --raw)
+RESEARCHER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-phase-researcher --raw)
 ```
 
 ## 1. Normalize and Validate Phase
 
 ```bash
-PHASE_INFO=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "$ARGUMENTS")
+PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "$ARGUMENTS")
 PHASE_DIR=$(echo "$PHASE_INFO" | grep -o '"directory":"[^"]*"' | cut -d'"' -f4)
 PHASE=$(echo "$PHASE_INFO" | grep -o '"phase_number":"[^"]*"' | cut -d'"' -f4)
 
@@ -131,7 +131,7 @@ Write to: .planning/phases/${PHASE}-{slug}/${PHASE}-RESEARCH.md
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + filled_prompt,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + filled_prompt,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Research Phase {phase}"
@@ -165,7 +165,7 @@ Research file: @.planning/phases/${PHASE}-{slug}/${PHASE}-RESEARCH.md
 
 ```
 Task(
-  prompt="First, read C:\Users\tomas\.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + continuation_prompt,
+  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + continuation_prompt,
   subagent_type="general-purpose",
   model="{researcher_model}",
   description="Continue research Phase {phase}"

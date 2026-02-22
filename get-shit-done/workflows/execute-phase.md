@@ -12,11 +12,37 @@ Read STATE.md and config.json before any operation.
 
 <process>
 
+
+## 0. Project Resolution
+
+```bash
+# INVARIANT: No workflow step may resolve relative paths (e.g., .planning/*)
+# before Step 0 completes. Step 0 may change cwd via `cd "$PROJECT_ROOT"`.
+# All relative path access must occur in named steps after Step 0.
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 <step name="resolve_model_profile" priority="first">
 
 ```bash
-EXECUTOR_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
-VERIFIER_MODEL=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-verifier --raw)
+EXECUTOR_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-executor --raw)
+VERIFIER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-verifier --raw)
 ```
 
 </step>
@@ -34,12 +60,18 @@ cat .planning/STATE.md 2>/dev/null
 **Load configs:**
 
 ```bash
-GSD_CONFIG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js state load --raw)
+GSD_CONFIG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw)
 COMMIT_PLANNING_DOCS=$(echo "$GSD_CONFIG" | grep '^commit_docs=' | cut -d= -f2)
 PARALLELIZATION=$(echo "$GSD_CONFIG" | grep '^parallelization=' | cut -d= -f2)
 BRANCHING_STRATEGY=$(echo "$GSD_CONFIG" | grep '^branching_strategy=' | cut -d= -f2)
 PHASE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^phase_branch_template=' | cut -d= -f2)
 MILESTONE_BRANCH_TEMPLATE=$(echo "$GSD_CONFIG" | grep '^milestone_branch_template=' | cut -d= -f2)
+```
+
+**Detect agent mode:**
+
+```bash
+AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
 ```
 
 When `PARALLELIZATION=false`, plans within a wave execute sequentially.
@@ -53,7 +85,7 @@ Create or switch to branch based on `BRANCHING_STRATEGY`.
 **"phase":**
 ```bash
 PHASE_NAME=$(basename "$PHASE_DIR" | sed 's/^[0-9]*-//')
-PHASE_SLUG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
+PHASE_SLUG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$PHASE_NAME" --raw)
 BRANCH_NAME=$(echo "$PHASE_BRANCH_TEMPLATE" | sed "s/{phase}/$PADDED_PHASE/g" | sed "s/{slug}/$PHASE_SLUG/g")
 git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
 ```
@@ -62,7 +94,7 @@ git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
 ```bash
 MILESTONE_VERSION=$(grep -oE 'v[0-9]+\.[0-9]+' .planning/ROADMAP.md | head -1 || echo "v1.0")
 MILESTONE_NAME=$(grep -A1 "## .*$MILESTONE_VERSION" .planning/ROADMAP.md | tail -1 | sed 's/.*- //' | cut -d'(' -f1 | tr -d ' ' || echo "milestone")
-MILESTONE_SLUG=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js generate-slug "$MILESTONE_NAME" --raw)
+MILESTONE_SLUG=$(node ~/.claude/get-shit-done/bin/gsd-tools.js generate-slug "$MILESTONE_NAME" --raw)
 BRANCH_NAME=$(echo "$MILESTONE_BRANCH_TEMPLATE" | sed "s/{milestone}/$MILESTONE_VERSION/g" | sed "s/{slug}/$MILESTONE_SLUG/g")
 git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
 ```
@@ -73,7 +105,7 @@ All subsequent commits go to this branch. User handles merging.
 <step name="validate_phase">
 
 ```bash
-PHASE_INFO=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}")
+PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.js find-phase "${PHASE_ARG}")
 PHASE_DIR=$(echo "$PHASE_INFO" | grep -o '"directory":"[^"]*"' | cut -d'"' -f4)
 if [ -z "$PHASE_DIR" ]; then
   echo "ERROR: No phase directory matching '${PHASE_ARG}'"
@@ -162,19 +194,61 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
    CONFIG_CONTENT=$(cat .planning/config.json 2>/dev/null)
    ```
 
+   ```bash
+   # --- Context Discovery (added by quick-006) ---
+   # 1. Gather project-root CLAUDE.md
+   CLAUDE_CONTEXT=""
+   if [ -f "CLAUDE.md" ]; then
+     CLAUDE_CONTEXT="## Project Instructions (CLAUDE.md)\n$(cat CLAUDE.md)\n\n"
+   fi
+
+   # 2. Gather scoped CLAUDE.md files from directories in files_modified
+   SCOPED_DIRS=$(grep "^files_modified:" "{plan_path}" -A 50 | sed -n '/^files_modified:/,/^[a-z]/p' | grep "^\s*-" | sed 's/^\s*-\s*//' | xargs -I{} dirname {} | sort -u)
+   for dir in $SCOPED_DIRS; do
+     # Walk up from each target directory looking for scoped CLAUDE.md
+     check_dir="$dir"
+     while [ "$check_dir" != "." ] && [ "$check_dir" != "/" ]; do
+       if [ -f "$check_dir/CLAUDE.md" ] && [ "$check_dir/CLAUDE.md" != "CLAUDE.md" ]; then
+         CLAUDE_CONTEXT="${CLAUDE_CONTEXT}## Scoped Instructions ($check_dir/CLAUDE.md)\n$(cat "$check_dir/CLAUDE.md")\n\n"
+         break
+       fi
+       check_dir=$(dirname "$check_dir")
+     done
+   done
+
+   # 3. List available skills
+   SKILLS_CONTEXT=""
+   if [ -d ".claude/skills" ]; then
+     SKILLS_LIST=$(ls -1 .claude/skills/ 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+     SKILLS_CONTEXT="## Available Skills\nThe following skills are available in .claude/skills/: ${SKILLS_LIST}\nTo use a skill, read its SKILL.md file: .claude/skills/{name}/SKILL.md\n"
+   fi
+   # --- End Context Discovery ---
+   ```
+
    Each agent prompt:
 
+   **If AGENT_MODE=true, prepend auto_mode context:**
+
    ```
+   <auto_mode>
+   You are running in GSD agent mode. For ALL decisions:
+   - Do NOT call AskUserQuestion
+   - Use auto-decide for structured questions:
+     node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
+   - For freeform questions: generate the answer from project context, then log:
+     node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+   </auto_mode>
+
    <objective>
    Execute plan {plan_number} of phase {phase_number}-{phase_name}.
    Commit each task atomically. Create SUMMARY.md. Update STATE.md.
    </objective>
 
    <execution_context>
-   @C:\Users\tomas\.claude/get-shit-done/workflows/execute-plan.md
-   @C:\Users\tomas\.claude/get-shit-done/templates/summary.md
-   @C:\Users\tomas\.claude/get-shit-done/references/checkpoints.md
-   @C:\Users\tomas\.claude/get-shit-done/references/tdd.md
+   @~/.claude/get-shit-done/workflows/execute-plan.md
+   @~/.claude/get-shit-done/templates/summary.md
+   @~/.claude/get-shit-done/references/checkpoints.md
+   @~/.claude/get-shit-done/references/tdd.md
    </execution_context>
 
    <context>
@@ -186,6 +260,11 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
    Config (if exists):
    {config_content}
+
+   Project context (auto-discovered):
+   {CLAUDE_CONTEXT}
+
+   {SKILLS_CONTEXT}
    </context>
 
    <success_criteria>
@@ -232,6 +311,38 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
 <step name="checkpoint_handling">
 Plans with `autonomous: false` require user interaction.
+
+**If AGENT_MODE=true:**
+
+Auto-handle checkpoints based on type:
+
+**checkpoint:human-verify:**
+- Auto-approve (agent mode trusts the verification step)
+- Log decision:
+  ```bash
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Checkpoint: human-verify" --options '["Approved"]' --raw
+  ```
+- Spawn continuation agent with auto-approval context
+
+**checkpoint:decision:**
+- Use auto-decide with the checkpoint's options:
+  ```bash
+  DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type binary --question "[checkpoint question]" --options '[checkpoint_options_json]' --raw)
+  ```
+- Spawn continuation agent with auto-decided option
+
+**checkpoint:human-action:**
+- HALT (agent cannot perform human-only actions like email verification, 2FA codes)
+- Write HALT.md to phase directory with full context:
+  - What task was blocked
+  - What human action is needed
+  - Verification command to run after action
+- Update STATE.md with "blocked" status
+- Stop execution
+
+For auto-approved checkpoints, log the decision and spawn continuation agent immediately.
+
+**If AGENT_MODE=false (classic):**
 
 **Flow:**
 
@@ -365,7 +476,7 @@ PADDED_PHASE=$(printf "%02d" "$PHASE_NUM")
 Spawn all 3 in parallel using Task with team_name and name parameters. The {PHASE_DIR}, {GOAL}, {MUST_HAVES}, {PADDED_PHASE}, and {VERIFIER_MODEL} are already resolved.
 
 ```
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-verifier.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-${PADDED_PHASE}-verification</team_name>
@@ -398,7 +509,7 @@ Write to: ${PHASE_DIR}/${PADDED_PHASE}-VALIDATOR-FINDINGS.md
   name="validator"
 )
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-verifier.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-${PADDED_PHASE}-verification</team_name>
@@ -432,7 +543,7 @@ Write to: ${PHASE_DIR}/${PADDED_PHASE}-BREAKER-FINDINGS.md
   name="breaker"
 )
 
-Task(prompt="First, read C:\Users\tomas\.claude/agents/gsd-verifier.md for your role and instructions.
+Task(prompt="First, read ~/.claude/agents/gsd-verifier.md for your role and instructions.
 
 <mode>teammate</mode>
 <team_name>phase-${PADDED_PHASE}-verification</team_name>
@@ -615,6 +726,28 @@ Read status:
 grep "^status:" "$PHASE_DIR"/*-VERIFICATION.md | cut -d: -f2 | tr -d ' '
 ```
 
+**If AGENT_MODE=true:**
+
+Auto-handle verification results:
+
+**Status: passed**
+- Proceed to update_roadmap (no user interaction needed)
+
+**Status: human_needed**
+- Auto-approve (agent mode trusts automated checks):
+  ```bash
+  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type approval --question "Human verification items approved?" --options '["Approved"]' --raw
+  ```
+- Log the human verification items to AUTO-DISPATCH-LOG.md for audit trail
+- Proceed to update_roadmap
+
+**Status: gaps_found**
+- Log the gaps found to AUTO-DISPATCH-LOG.md
+- Return control to dispatcher for re-plan->re-execute cycle (dispatcher's iteration logic handles this)
+- Do NOT prompt user for action
+
+**If AGENT_MODE=false (classic):**
+
 | Status | Action |
 |--------|--------|
 | `passed` | → update_roadmap |
@@ -660,7 +793,7 @@ Gap closure cycle: `/gsd:plan-phase {X} --gaps` reads VERIFICATION.md → create
 Mark phase complete in ROADMAP.md (date, status).
 
 ```bash
-node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "docs(phase-{X}): complete phase execution" --files .planning/ROADMAP.md .planning/STATE.md .planning/phases/{phase_dir}/*-VERIFICATION.md .planning/REQUIREMENTS.md
+node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs(phase-{X}): complete phase execution" --files .planning/ROADMAP.md .planning/STATE.md .planning/phases/{phase_dir}/*-VERIFICATION.md .planning/REQUIREMENTS.md
 ```
 </step>
 
@@ -694,10 +827,23 @@ Orchestrator: ~10-15% context. Subagents: fresh 200k each. No polling (Task bloc
 </context_efficiency>
 
 <failure_handling>
+
+**If AGENT_MODE=true:**
+
+- **Agent fails mid-plan:** Log failure to AUTO-DISPATCH-LOG.md, update STATE.md with failure context, return structured failure result to dispatcher (dispatcher handles retry/halt per config)
+- **Dependency chain breaks:** Log chain break, return failure result to dispatcher with affected plans list
+- **All agents in wave fail:** Log systemic issue, return failure result to dispatcher (dispatcher halts with HALT.md)
+- **Checkpoint unresolvable (human-action type):** Write HALT.md to phase directory, update STATE.md with "blocked" status, return halt result to dispatcher
+
+Do NOT prompt user for decisions in agent mode -- return structured results for dispatcher consumption.
+
+**If AGENT_MODE=false (classic):**
+
 - **Agent fails mid-plan:** Missing SUMMARY.md → report, ask user how to proceed
 - **Dependency chain breaks:** Wave 1 fails → Wave 2 dependents likely fail → user chooses attempt or skip
 - **All agents in wave fail:** Systemic issue → stop, report for investigation
 - **Checkpoint unresolvable:** "Skip this plan?" or "Abort phase execution?" → record partial progress in STATE.md
+
 </failure_handling>
 
 <resumption>

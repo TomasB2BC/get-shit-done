@@ -1,6 +1,7 @@
 ---
 name: gsd:progress
 description: Check project progress, show context, and route to next action (execute or plan)
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Bash
@@ -15,10 +16,10 @@ Provides situational awareness before continuing work.
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/progress.md
+@~/.claude/get-shit-done/workflows/progress.md
 </execution_context>
 
 <process>
-Execute the progress workflow from @C:\Users\tomas\.claude/get-shit-done/workflows/progress.md end-to-end.
+Execute the progress workflow from @~/.claude/get-shit-done/workflows/progress.md end-to-end.
 Preserve all routing logic (Routes A through F) and edge case handling.
 </process>

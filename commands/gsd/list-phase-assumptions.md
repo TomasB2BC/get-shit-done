@@ -1,7 +1,7 @@
 ---
 name: gsd:list-phase-assumptions
 description: Surface Claude's assumptions about a phase approach before planning
-argument-hint: "[phase]"
+argument-hint: "[--project <alias>] [phase]"
 allowed-tools:
   - Read
   - Bash
@@ -17,7 +17,7 @@ Output: Conversational output only (no file creation) - ends with "What do you t
 </objective>
 
 <execution_context>
-@C:\Users\tomas\.claude/get-shit-done/workflows/list-phase-assumptions.md
+@~/.claude/get-shit-done/workflows/list-phase-assumptions.md
 </execution_context>
 
 <context>
