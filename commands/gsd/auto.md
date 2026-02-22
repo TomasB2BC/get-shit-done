@@ -40,6 +40,7 @@ If a previous run was interrupted (session death during approval wait), use `--r
 
 <context>
 **Flags:**
+- `--project <alias>` — Target a specific sub-project by alias (resolved via projects.json, must be registered with /gsd:register-project)
 - `--max-phases N` — Limit dispatcher to N phases (overrides config max_phases)
 - `--single-phase` — Run only current phase, then stop (overrides config)
 - `--resume` — Resume from a previous session that was interrupted (checks PENDING_APPROVAL.md and HALT.md for resume markers)
