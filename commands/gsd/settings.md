@@ -1,6 +1,7 @@
 ---
 name: gsd:settings
 description: Configure GSD workflow toggles and model profile
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Write

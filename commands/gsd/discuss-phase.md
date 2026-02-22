@@ -1,7 +1,7 @@
 ---
 name: gsd:discuss-phase
 description: Gather phase context through adaptive questioning before planning
-argument-hint: "<phase>"
+argument-hint: "[--project <alias>] <phase>"
 allowed-tools:
   - Read
   - Write

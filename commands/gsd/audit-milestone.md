@@ -1,7 +1,7 @@
 ---
 name: gsd:audit-milestone
 description: Audit milestone completion against original intent before archiving
-argument-hint: "[version]"
+argument-hint: "[--project <alias>] [version]"
 allowed-tools:
   - Read
   - Glob

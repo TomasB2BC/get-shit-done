@@ -1,6 +1,7 @@
 ---
 name: gsd:pause-work
 description: Create context handoff when pausing work mid-phase
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Write

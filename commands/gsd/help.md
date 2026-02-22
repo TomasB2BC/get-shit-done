@@ -1,6 +1,7 @@
 ---
 name: gsd:help
 description: Show available GSD commands and usage guide
+argument-hint: "[--project <alias>]"
 ---
 <objective>
 Display the complete GSD command reference.

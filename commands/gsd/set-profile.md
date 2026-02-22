@@ -1,7 +1,7 @@
 ---
 name: gsd:set-profile
 description: Switch model profile for GSD agents (quality/balanced/budget)
-argument-hint: <profile>
+argument-hint: "[--project <alias>] <profile>"
 allowed-tools:
   - Read
   - Write

@@ -1,6 +1,7 @@
 ---
 name: gsd:update
 description: Update GSD to latest version with changelog display
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Bash
   - AskUserQuestion

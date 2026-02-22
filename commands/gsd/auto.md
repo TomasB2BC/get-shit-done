@@ -1,7 +1,7 @@
 ---
 name: gsd:auto
 description: Run an entire milestone autonomously using Chain-of-Agents dispatcher
-argument-hint: "[--max-phases N] [--single-phase] [--resume]"
+argument-hint: "[--project <alias>] [--max-phases N] [--single-phase] [--resume]"
 allowed-tools:
   - Read
   - Write

@@ -1,6 +1,7 @@
 ---
 name: gsd:plan-milestone-gaps
 description: Create phases to close all gaps identified by milestone audit
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Write

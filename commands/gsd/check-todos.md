@@ -1,7 +1,7 @@
 ---
 name: gsd:check-todos
 description: List pending todos and select one to work on
-argument-hint: [area filter]
+argument-hint: "[--project <alias>] [area filter]"
 allowed-tools:
   - Read
   - Write

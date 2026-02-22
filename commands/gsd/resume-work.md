@@ -1,6 +1,7 @@
 ---
 name: gsd:resume-work
 description: Resume work from previous session with full context restoration
+argument-hint: "[--project <alias>]"
 allowed-tools:
   - Read
   - Bash
