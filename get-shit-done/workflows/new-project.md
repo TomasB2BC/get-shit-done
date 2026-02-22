@@ -8,6 +8,28 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 <process>
 
+## 0. Project Resolution
+
+```bash
+PROJECT_ALIAS=""
+if echo "$ARGUMENTS" | grep -q '\-\-project'; then
+  PROJECT_ALIAS=$(echo "$ARGUMENTS" | grep -oP '(?<=--project\s)\S+')
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--project[[:space:]]\+[[:graph:]]\+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+fi
+
+if [ -n "$PROJECT_ALIAS" ]; then
+  PROJECT_DIR=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS" --raw)
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "[X] ERROR: Project alias '$PROJECT_ALIAS' not found"
+    node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js resolve-project "$PROJECT_ALIAS"
+    # Stop execution
+  fi
+  PROJECT_ROOT=$(dirname "$PROJECT_DIR")
+  cd "$PROJECT_ROOT"
+  echo ">> Resolved --project $PROJECT_ALIAS -> $PROJECT_ROOT"
+fi
+```
+
 ## 1. Setup
 
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
@@ -494,6 +516,67 @@ node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js commit "chore: add pr
 ```
 
 **Note:** Run `/gsd:settings` anytime to update these preferences.
+
+## 5.1. Auto-Registration Check
+
+Check if this project is a sub-project inside a parent project with existing `.planning/`:
+
+```bash
+# Check if parent directories have .planning/PROJECT.md (root project indicator)
+PARENT_PLANNING=""
+SEARCH_DIR=$(dirname "$(pwd)")
+while [ "$SEARCH_DIR" != "/" ] && [ "$SEARCH_DIR" != "." ] && [ ${#SEARCH_DIR} -gt 2 ]; do
+  if [ -f "$SEARCH_DIR/.planning/PROJECT.md" ]; then
+    PARENT_PLANNING="$SEARCH_DIR/.planning"
+    break
+  fi
+  SEARCH_DIR=$(dirname "$SEARCH_DIR")
+done
+```
+
+**If sub-project detected (PARENT_PLANNING is non-empty):**
+
+```bash
+if [ -n "$PARENT_PLANNING" ]; then
+  ALIAS=$(basename "$(pwd)")
+  # Compute relative path from parent root to current .planning/
+  RELATIVE_PLANNING=$(node -e "const path = require('path'); console.log(path.relative('$(dirname \"$PARENT_PLANNING\")', '$(pwd)/.planning').replace(/\\\\/g, '/'))")
+
+  echo ">> Sub-project detected. Auto-registering as '$ALIAS'"
+  echo ">> Parent project: $PARENT_PLANNING"
+
+  # Register in parent's projects.json
+  ORIG_DIR=$(pwd)
+  cd "$(dirname "$PARENT_PLANNING")"
+  REGISTER_RESULT=$(node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js register-project "$ALIAS" --dir "$RELATIVE_PLANNING" --raw)
+  cd "$ORIG_DIR"
+
+  if [ "$REGISTER_RESULT" = "registered" ] || [ "$REGISTER_RESULT" = "already_registered" ]; then
+    echo "[OK] Registered as '$ALIAS' in $(dirname "$PARENT_PLANNING")/projects.json"
+    echo "Use: /gsd:execute-phase 1 --project $ALIAS"
+  else
+    echo "[!] WARNING: Auto-registration failed: $REGISTER_RESULT"
+    echo "You can register manually: /gsd:register-project"
+  fi
+fi
+```
+
+**If agent_mode=true and sub-project detected, log the decision:**
+
+```bash
+if [ "$AGENT_MODE" = "true" ] && [ -n "$PARENT_PLANNING" ]; then
+  ORIG_DIR=$(pwd)
+  cd "$(dirname "$PARENT_PLANNING")"
+  node C:\Users\tomas\.claude/get-shit-done/bin/gsd-tools.js log-decision \
+    --type freeform \
+    --question "Should the new sub-project at $(basename "$ORIG_DIR") be auto-registered?" \
+    --decision "Auto-registered as '$ALIAS' in parent projects.json" \
+    --rationale "Sub-project detected (parent has .planning/PROJECT.md). Alias derived from directory name per CONTEXT.md locked decision."
+  cd "$ORIG_DIR"
+fi
+```
+
+**If no parent project detected:** Skip (this is a root-level project).
 
 ## 5.5. Resolve Model Profile
 
