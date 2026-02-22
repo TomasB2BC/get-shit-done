@@ -14,6 +14,9 @@
  *   resolve-model <agent-type>         Get model for agent based on profile
  *   find-phase <phase>                 Find phase directory by number
  *   list-phases                        List all phase numbers sorted numerically
+ *   resolve-project <alias>            Resolve project alias to planning dir
+ *   register-project [alias] [--dir]   Register current project
+ *   list-projects                      List all registered projects
  *   commit <message> [--files f1 f2]   Commit planning docs
  *   verify-summary <path>              Verify a SUMMARY.md file
  */
@@ -821,6 +824,182 @@ function cmdLogDecision(cwd, decisionType, question, decision, rationale, raw, r
   output(result, raw, 'logged');
 }
 
+// ─── Project Alias Resolution ─────────────────────────────────────────────────
+
+function resolveProject(cwd, alias) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    const projects = JSON.parse(raw);
+
+    if (!projects[alias]) {
+      const available = Object.keys(projects);
+      const availableStr = available.length > 0 ? available.join(', ') : '(none)';
+      return {
+        found: false,
+        alias,
+        planning_dir: null,
+        error: 'Alias "' + alias + '" not found. Available: ' + availableStr
+      };
+    }
+
+    const entry = projects[alias];
+    const planningDir = entry.planning_dir || entry;
+    const resolved = path.resolve(cwd, planningDir).replace(/\\/g, '/');
+
+    return {
+      found: true,
+      alias,
+      planning_dir: resolved
+    };
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return {
+        found: false,
+        alias,
+        planning_dir: null,
+        error: 'No projects registered. Run /gsd:register-project first.'
+      };
+    }
+    return {
+      found: false,
+      alias,
+      planning_dir: null,
+      error: 'Error reading projects.json: ' + err.message
+    };
+  }
+}
+
+function registerProject(cwd, alias, planningDir) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  // Read existing or create empty
+  let projects = {};
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    projects = JSON.parse(raw);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      return { registered: false, error: 'Error reading projects.json: ' + err.message };
+    }
+    // File doesn't exist, start fresh
+  }
+
+  // Normalize planning_dir for comparison
+  const normalizedDir = planningDir.replace(/\\/g, '/');
+
+  // Check if alias already exists
+  if (projects[alias]) {
+    const existingDir = (projects[alias].planning_dir || projects[alias]).replace(/\\/g, '/');
+    if (existingDir === normalizedDir) {
+      return { registered: true, reason: 'already_registered' };
+    }
+    return {
+      registered: false,
+      error: 'Alias "' + alias + '" already registered to: ' + existingDir
+    };
+  }
+
+  // Validate the planning_dir exists
+  const resolvedDir = path.resolve(cwd, planningDir);
+  if (!fs.existsSync(resolvedDir)) {
+    return {
+      registered: false,
+      error: 'Planning directory does not exist: ' + planningDir
+    };
+  }
+
+  // Register
+  projects[alias] = {
+    planning_dir: normalizedDir,
+    registered: new Date().toISOString()
+  };
+
+  // Ensure .planning directory exists
+  const planningParent = path.join(cwd, '.planning');
+  if (!fs.existsSync(planningParent)) {
+    fs.mkdirSync(planningParent, { recursive: true });
+  }
+
+  fs.writeFileSync(projectsPath, JSON.stringify(projects, null, 2), 'utf-8');
+
+  return {
+    registered: true,
+    reason: 'new_registration',
+    alias,
+    planning_dir: normalizedDir
+  };
+}
+
+function listProjects(cwd) {
+  const projectsPath = path.join(cwd, '.planning', 'projects.json');
+
+  try {
+    const raw = fs.readFileSync(projectsPath, 'utf-8');
+    const projects = JSON.parse(raw);
+
+    const projectList = Object.keys(projects).map(alias => ({
+      alias,
+      planning_dir: projects[alias].planning_dir || projects[alias],
+      registered: projects[alias].registered || 'unknown'
+    }));
+
+    return { projects: projectList, count: projectList.length };
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return { projects: [], count: 0 };
+    }
+    return { projects: [], count: 0, error: err.message };
+  }
+}
+
+function cmdResolveProject(cwd, alias, raw) {
+  if (!alias) {
+    error('alias required for resolve-project');
+  }
+
+  const result = resolveProject(cwd, alias);
+  output(result, raw, result.found ? result.planning_dir : '');
+}
+
+function cmdRegisterProject(cwd, alias, planningDir, raw) {
+  // Derive alias from directory name if not provided
+  if (!alias) {
+    alias = path.basename(cwd);
+  }
+
+  // Default planning dir to current .planning/
+  if (!planningDir) {
+    planningDir = '.planning';
+  }
+
+  const result = registerProject(cwd, alias, planningDir);
+
+  if (raw) {
+    if (result.registered) {
+      process.stdout.write(result.reason);
+    } else {
+      process.stdout.write('error');
+    }
+    process.exit(0);
+  }
+
+  output(result);
+}
+
+function cmdListProjects(cwd, raw) {
+  const result = listProjects(cwd);
+
+  if (raw) {
+    const aliases = result.projects.map(p => p.alias);
+    process.stdout.write(aliases.join('\n'));
+    process.exit(0);
+  }
+
+  output(result);
+}
+
 // ─── CLI Router ───────────────────────────────────────────────────────────────
 
 function main() {
@@ -833,7 +1012,7 @@ function main() {
   const cwd = process.cwd();
 
   if (!command) {
-    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, list-phases, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
+    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, list-phases, resolve-project, register-project, list-projects, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
   }
 
   switch (command) {
@@ -859,6 +1038,24 @@ function main() {
 
     case 'list-phases': {
       cmdListPhases(cwd, raw);
+      break;
+    }
+
+    case 'resolve-project': {
+      cmdResolveProject(cwd, args[1], raw);
+      break;
+    }
+
+    case 'register-project': {
+      const alias = args[1] && !args[1].startsWith('--') ? args[1] : null;
+      const dirIndex = args.indexOf('--dir');
+      const planningDir = dirIndex !== -1 ? args[dirIndex + 1] : null;
+      cmdRegisterProject(cwd, alias, planningDir, raw);
+      break;
+    }
+
+    case 'list-projects': {
+      cmdListProjects(cwd, raw);
       break;
     }
 
