@@ -6,7 +6,7 @@
 ## Milestones
 
 - [x] **v1.12.0-hybrid** -- Phases 1-7 (shipped 2026-02-08) | [Archive](milestones/v1.12.0-hybrid-ROADMAP.md)
-- [x] **v2.0.0-agent-mode** -- Phases 8-13 (shipped 2026-02-22)
+- [ ] **v2.0.0-agent-mode** -- Phases 8-14 (Phases 8-13 shipped 2026-02-22, Phase 14 gap closure)
 
 ## Phases
 
@@ -37,6 +37,7 @@
 - [x] **Phase 11: Team Research Integration** - Wire TeamCreate debate protocol into auto-dispatch when agent_teams.research=true
 - [x] **Phase 12: Decimal Phase Support** - Fix dispatcher increment logic to handle decimal phases (5.1, 5.2)
 - [x] **Phase 13: Project Alias Resolver** - Global --project flag across all GSD commands with auto-registration
+- [x] **Phase 14: Dispatcher Tech Debt Cleanup** - Fix verify-phase dispatch, add missing docs, harden agent-mode detection
 
 ## Phase Details
 
@@ -145,10 +146,32 @@ Plans:
 **Details:**
 Add `resolveProject(alias)` to gsd-tools.js that reads `.planning/projects.json` and returns the planning directory path. All GSD commands accept `--project <alias>` (e.g., `/gsd:execute-phase 3 --project venntel`). Auto-registration: `/gsd:new-project` detects when running inside a repo with an existing root `.planning/` and auto-adds the sub-project to `projects.json`. Alias derived from directory name. Existing projects get a one-time `/gsd:register-project` or auto-discovery scan. This eliminates wasted tokens from agents resolving wrong project context.
 
+### Phase 14: Dispatcher Tech Debt Cleanup
+**Goal:** Close 5 tech debt items from milestone audit -- fix verify-phase dispatch, add missing docs, harden agent-mode detection
+**Gap Closure:** Closes gaps from v2.0.0-MILESTONE-AUDIT.md
+
+**Depends on:** Phase 13 (all prior phases complete)
+
+**Success Criteria** (what must be TRUE):
+1. auto-dispatch.md verify-phase action dispatches a command that produces VERIFICATION.md (not UAT)
+2. auto.md context section documents all flags including --project
+3. execute-plan.md detects agent-mode directly (not solely via parent prompt injection)
+4. Step 0 Project Resolution documents cd timing assumption or validates no pre-Step-0 relative paths
+5. Stuck loop detection includes a guard or documentation for STATE.md update failures
+
+**Plans:** 2 plans
+
+Plans:
+- [x] 14-01-PLAN.md -- Fix verify-phase dispatch (TD-1) + stuck loop false-positive guard (TD-5) in auto-dispatch.md
+- [x] 14-02-PLAN.md -- auto.md --project docs (TD-2) + execute-plan.md agent-mode detection (TD-3) + Step 0 invariant comment (TD-4)
+
+**Details:**
+Tech debt from milestone audit. All items are low severity but improve robustness of the autonomous pipeline. The most impactful fix is #1 (verify-phase dispatch) which closes the only integration gap and the only broken E2E flow fallback path.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|---------------|--------|-----------|
@@ -165,7 +188,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Team Research Integration | v2.0.0 | 1/1 | Complete | 2026-02-22 |
 | 12. Decimal Phase Support | v2.0.0 | 2/2 | Complete | 2026-02-22 |
 | 13. Project Alias Resolver | v2.0.0 | 3/3 | Complete | 2026-02-22 |
+| 14. Dispatcher Tech Debt Cleanup | v2.0.0 | 2/2 | Complete | 2026-02-22 |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-22 -- Phase 13 complete (3/3 plans, verification passed 15/15) -- v2.0.0-agent-mode MILESTONE COMPLETE*
+*Last updated: 2026-02-22 -- Phase 14 complete (2/2 plans executed)*
