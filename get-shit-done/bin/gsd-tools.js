@@ -13,6 +13,7 @@
  *   state update <field> <value>       Update a STATE.md field
  *   resolve-model <agent-type>         Get model for agent based on profile
  *   find-phase <phase>                 Find phase directory by number
+ *   list-phases                        List all phase numbers sorted numerically
  *   commit <message> [--files f1 f2]   Commit planning docs
  *   verify-summary <path>              Verify a SUMMARY.md file
  */
@@ -507,6 +508,44 @@ function cmdFindPhase(cwd, phase, raw) {
   }
 }
 
+function cmdListPhases(cwd, raw) {
+  const phasesDir = path.join(cwd, '.planning', 'phases');
+
+  try {
+    const entries = fs.readdirSync(phasesDir, { withFileTypes: true });
+    const dirs = entries.filter(e => e.isDirectory());
+
+    // Extract phase numbers from directory names
+    const phases = [];
+    for (const dir of dirs) {
+      const match = dir.name.match(/^(\d+(?:\.\d+)?)-/);
+      if (match) {
+        phases.push(match[1]);
+      }
+    }
+
+    // Sort numerically (integer part first, then decimal part)
+    phases.sort((a, b) => {
+      const aParts = a.split('.').map(Number);
+      const bParts = b.split('.').map(Number);
+      if (aParts[0] !== bParts[0]) return aParts[0] - bParts[0];
+      return (aParts[1] || 0) - (bParts[1] || 0);
+    });
+
+    // Deduplicate (multiple dirs with same phase number)
+    const unique = [...new Set(phases)];
+
+    const result = {
+      phases: unique,
+      count: unique.length
+    };
+
+    output(result, raw, unique.join('\n'));
+  } catch {
+    output({ phases: [], count: 0 }, raw, '');
+  }
+}
+
 function cmdCommit(cwd, message, files, raw) {
   if (!message) {
     error('commit message required');
@@ -794,7 +833,7 @@ function main() {
   const cwd = process.cwd();
 
   if (!command) {
-    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
+    error('Usage: gsd-tools <command> [args] [--raw]\nCommands: state, resolve-model, find-phase, list-phases, commit, verify-summary, auto-decide, log-decision, generate-slug, current-timestamp, list-todos, verify-path-exists, config-ensure-section');
   }
 
   switch (command) {
@@ -815,6 +854,11 @@ function main() {
 
     case 'find-phase': {
       cmdFindPhase(cwd, args[1], raw);
+      break;
+    }
+
+    case 'list-phases': {
+      cmdListPhases(cwd, raw);
       break;
     }
 
