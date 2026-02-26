@@ -106,6 +106,230 @@ CONTEXT_CONTENT=$(cat "${PHASE_DIR}"/*-CONTEXT.md 2>/dev/null)
 
 If CONTEXT.md exists, display: `Using phase context from: ${PHASE_DIR}/*-CONTEXT.md`
 
+## 4.5 Explorer Recon (Optional)
+
+**Auto-skip checks (run BEFORE any probe work):**
+
+```bash
+# Skip condition 1: User already provided domain context (hard rule)
+CONTEXT_EXISTS=$(ls "${PHASE_DIR}"/*-CONTEXT.md 2>/dev/null | wc -l)
+
+# Skip condition 2: Recon already completed for this phase (reuse existing)
+RECON_EXISTS=$(ls "${PHASE_DIR}/recon/RECON.md" 2>/dev/null | wc -l)
+
+# Skip condition 3: Config toggle off (default false)
+EXPLORER_RECON=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"explorer_recon"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+
+if [ "$EXPLORER_RECON" = "false" ] || [ "$CONTEXT_EXISTS" -gt 0 ] || [ "$RECON_EXISTS" -gt 0 ]; then
+  SKIP_REASON="config off"
+  [ "$CONTEXT_EXISTS" -gt 0 ] && SKIP_REASON="CONTEXT.md exists"
+  [ "$RECON_EXISTS" -gt 0 ] && SKIP_REASON="RECON.md exists (reusing)"
+  echo ">> Skipping recon: $SKIP_REASON"
+  # Jump to Step 5
+fi
+```
+
+**If NOT skipped, proceed with recon:**
+
+```
+>> Explorer Recon: spawning field probes...
+```
+
+**Step R1: Create recon directory and spawn 3 parallel Explore Tasks**
+
+```bash
+mkdir -p "${PHASE_DIR}/recon"
+```
+
+Spawn 3 parallel Tasks. Each MUST use `subagent_type="Explore"` (NOT general-purpose):
+
+**Problem-space probe:**
+```
+Task(
+  prompt="You are a field recon explorer. Your job is narrow: answer ONE question.
+
+Question: What is the core technical problem for this phase? What existing code, prior phases, or related files are directly relevant?
+
+Phase: Phase {phase_number}: {phase_name}
+Phase description: {phase_description}
+
+Resources: read local project files only (.planning/, relevant source files from phase description).
+Do NOT do web research -- that is reserved for the full research team.
+
+Return a 200-400 word digest. No padding. Dense and actionable.
+Focus: facts the research team needs to start well-oriented.
+
+Write your digest to: ${PHASE_DIR}/recon/probe-problem.md",
+  subagent_type="Explore",
+  description="Recon probe: problem-space"
+)
+```
+
+**Ecosystem-scan probe:**
+```
+Task(
+  prompt="You are a field recon explorer. Your job is narrow: answer ONE question.
+
+Question: What patterns, tools, or conventions already exist in this codebase that relate to this domain?
+
+Phase: Phase {phase_number}: {phase_name}
+Phase description: {phase_description}
+
+Resources: read local project files only (.planning/, relevant source files from phase description).
+Do NOT do web research -- that is reserved for the full research team.
+
+Return a 200-400 word digest. No padding. Dense and actionable.
+Focus: facts the research team needs to start well-oriented.
+
+Write your digest to: ${PHASE_DIR}/recon/probe-ecosystem.md",
+  subagent_type="Explore",
+  description="Recon probe: ecosystem-scan"
+)
+```
+
+**Constraint-finder probe:**
+```
+Task(
+  prompt="You are a field recon explorer. Your job is narrow: answer ONE question.
+
+Question: What are the constraints: existing code to integrate with, config patterns, non-obvious limits, adjacent phases that must stay compatible?
+
+Phase: Phase {phase_number}: {phase_name}
+Phase description: {phase_description}
+
+Resources: read local project files only (.planning/, relevant source files from phase description).
+Do NOT do web research -- that is reserved for the full research team.
+
+Return a 200-400 word digest. No padding. Dense and actionable.
+Focus: facts the research team needs to start well-oriented.
+
+Write your digest to: ${PHASE_DIR}/recon/probe-constraints.md",
+  subagent_type="Explore",
+  description="Recon probe: constraint-finder"
+)
+```
+
+**Step R2: Wait for all probes to complete, then verify output files exist**
+
+```bash
+ls "${PHASE_DIR}/recon/probe-problem.md" 2>/dev/null
+ls "${PHASE_DIR}/recon/probe-ecosystem.md" 2>/dev/null
+ls "${PHASE_DIR}/recon/probe-constraints.md" 2>/dev/null
+```
+
+**Step R3: Synthesize into RECON.md**
+
+Read all 3 probe files. Fill the following RECON.md template (the orchestrator LLM fills values, not structure -- the template is mandatory):
+
+```markdown
+# Recon: Phase {N} - {Name}
+
+## Problem Space
+[200 words max -- from problem-space probe]
+
+## Ecosystem Signals
+[200 words max -- from ecosystem-scan probe]
+
+## Constraints
+[200 words max -- from constraint-finder probe]
+
+## Recon Verdict
+[1 paragraph orchestrator synthesis]
+
+---
+composition_hint: [adversarial | collaborative | domain-specialist | minimal]
+proposed_roles:
+  - optimist
+  - [devil's-advocate | domain-specialist | integration-specialist]
+  - [explorer | skip]
+composition_rationale: [1 sentence]
+---
+
+<recon_injection>
+PROBLEM: [2-3 sentence dense summary of the core problem]
+EXISTING: [key existing code/patterns directly relevant]
+CONSTRAINTS: [non-obvious limits the researcher must respect]
+NOT-ABOUT: [what the researcher should NOT spend time discovering -- already covered by recon]
+TEAM-HINT: [composition_hint value + 1-sentence rationale]
+</recon_injection>
+```
+
+The `composition_hint` field uses a closed vocabulary: `adversarial`, `collaborative`, `domain-specialist`, `minimal`. Write the completed RECON.md to `${PHASE_DIR}/recon/RECON.md`.
+
+**Step R4: Clean up raw probe files**
+
+```bash
+rm -f "${PHASE_DIR}/recon/probe-problem.md"
+rm -f "${PHASE_DIR}/recon/probe-ecosystem.md"
+rm -f "${PHASE_DIR}/recon/probe-constraints.md"
+```
+
+**Step R5: Human checkpoint for team composition (or auto-decide in agent mode)**
+
+Read `composition_hint` and `proposed_roles` from RECON.md.
+
+**If AGENT_MODE=true:**
+
+```bash
+COMP_HINT=$(grep "^composition_hint:" "${PHASE_DIR}/recon/RECON.md" | awk '{print $2}')
+
+SELECTED_COMPOSITION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide \
+  --type choice \
+  --question "Which researcher team composition based on recon?" \
+  --options '["adversarial","collaborative","domain-specialist","minimal"]' \
+  --context "recon says: $COMP_HINT" \
+  --raw)
+```
+
+The `SELECTED_COMPOSITION` value drives the spawn list in Step 5 -- this is NOT a log-and-forget call.
+
+**If AGENT_MODE=false (interactive):**
+
+Display the RECON.md narrative sections and proposed team composition:
+
+```
+>> Recon complete. Field report:
+
+[Display Problem Space, Ecosystem Signals, Constraints, Recon Verdict sections]
+
+>> Proposed research team:
+   [1] optimist
+   [2] [second role from proposed_roles]
+   [3] [third role from proposed_roles]
+
+Options:
+  P  - Proceed with proposed team
+  E  - Edit team composition (type role names)
+  A  - Add context to recon before proceeding
+  S  - Skip recon (proceed with defaults)
+```
+
+Store the selected composition as `SELECTED_COMPOSITION` for use in Step 5.
+
+**Step R6: Store recon context for injection into researcher prompts**
+
+Read the `<recon_injection>` block from RECON.md and store it as `RECON_CONTEXT`:
+
+```bash
+RECON_CONTEXT=$(sed -n '/<recon_injection>/,/<\/recon_injection>/p' "${PHASE_DIR}/recon/RECON.md")
+```
+
+**Step R7: Map composition to spawn list for Step 5**
+
+Use `SELECTED_COMPOSITION` to determine which roles to spawn:
+
+| SELECTED_COMPOSITION | Roles to Spawn |
+|---------------------|---------------|
+| adversarial | optimist + devil's-advocate + explorer |
+| collaborative | optimist + domain-specialist |
+| domain-specialist | optimist + [domain-specific role from RECON.md proposed_roles] |
+| minimal | optimist only |
+
+Store the role list as `RECON_SPAWN_LIST`. When Step 5 (Handle Research) runs, if recon was performed:
+- Use `RECON_SPAWN_LIST` instead of the default 3-role team
+- Inject `<recon_context>{RECON_CONTEXT}</recon_context>` into every researcher's prompt (after the existing context section)
+- The `recon_context` tag contains only the recon_injection block, NOT the full RECON.md narrative
+
 ## 5. Handle Research
 
 **Skip if:** `--gaps` flag, `--skip-research` flag, or config `workflow.research=false` (without `--research` override).
@@ -168,6 +392,11 @@ IMPORTANT: If CONTEXT.md exists below, it contains user decisions from /gsd:disc
 **Requirements:** {requirements}
 **Prior decisions:** {decisions}
 </additional_context>
+
+{If RECON_CONTEXT is set from Stage 4.5:}
+<recon_context>
+{RECON_CONTEXT}
+</recon_context>
 
 <output>
 Write to: {phase_dir}/{phase}-RESEARCH.md
@@ -235,12 +464,14 @@ FALLBACK_TO_CLASSIC=false
 
 **Step H2: Spawn 3 researcher teammates**
 
-Spawn all 3 in parallel. Each Task prompt includes:
+If recon was performed (Stage 4.5), use `RECON_SPAWN_LIST` to determine which roles to spawn (may be fewer than 3). Include `<recon_context>{RECON_CONTEXT}</recon_context>` in each teammate's Task prompt after the `<additional_context>` section.
+
+Spawn all 3 (or fewer per `RECON_SPAWN_LIST`) in parallel. Each Task prompt includes:
 - `<mode>teammate</mode>`
 - `<team_name>${TEAM_NAME}</team_name>`
 - `<role>optimist</role>` (or devil's-advocate, or explorer)
 - Reference to agent file
-- Research prompt content
+- Research prompt content (including `<recon_context>` if recon was performed)
 
 **Optimist teammate:**
 ```
@@ -406,7 +637,9 @@ Proceed to step 6.
 TeamDelete(team_name="${TEAM_NAME}")
 ```
 
-**Classic research path (unchanged):**
+**Classic research path:**
+
+If recon was performed (Stage 4.5), the `research_prompt` already contains `<recon_context>{RECON_CONTEXT}</recon_context>`. No additional modification needed.
 
 ```
 Task(
