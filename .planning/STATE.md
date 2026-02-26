@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 18 - Explorer Recon Step for Research (Plan 02 complete)
+**Current focus:** Phase 18 - Explorer Recon Step for Research (All plans complete)
 
 ## Current Position
 
 Phase: 18 of 18 (Explorer Recon Step for Research)
 Plan: 2 of 2 (Phase 18 complete)
-Status: In progress -- Phase 18 both plans executed; v2.1.0-distribution milestone partial
-Last activity: 2026-02-26 -- Completed 18-02-PLAN.md (recon_context added to gsd-phase-researcher.md)
+Status: Phase 18 complete -- verification passed 15/15; v2.1.0-distribution milestone partial (1/4 phases)
+Last activity: 2026-02-26 -- Phase 18 executed and verified (2 plans, 4 commits, 15/15 must-haves)
 
 Progress: [████░░░░░░░░░░░░░░░░] ~10% (Phase 18 of 18 done; phases 15-17 not yet planned)
 
@@ -44,6 +44,13 @@ Progress: [████░░░░░░░░░░░░░░░░] ~10% (P
 All decisions logged in PROJECT.md Key Decisions table.
 v2.0.0 milestone decisions archived in .planning/milestones/v2.0.0-agent-mode-ROADMAP.md
 
+**Phase 18 Plan 01 decisions (2026-02-26):**
+- explorer_recon config toggle defaults to false -- opt-in to preserve existing behavior
+- Probe tasks use subagent_type=Explore (not general-purpose) to prevent web research drift
+- Only recon_injection block injected into researcher prompts (not full RECON.md narrative)
+- minimal composition_hint forces USE_HYBRID=false in research-phase.md
+- AGENT_MODE detection added to research-phase.md Step 1 (was missing, required for recon auto-decide branch)
+
 ### Pending Todos
 
 1 pending todo:
@@ -63,10 +70,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 18 plan 02 complete -- recon_context section added to gsd-phase-researcher.md
+Stopped at: Phase 18 complete -- verification passed 15/15
 Resume file: N/A
-Next action: Plans 15-17 (Coworker Onboarding, Distribution Packaging, Getting Started Guide) not yet planned
+Next action: /gsd:plan-phase 15 (Coworker Onboarding -- first unplanned phase in order)
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-26 -- Phase 18 plan 02 complete*
+*Last updated: 2026-02-26 -- Phase 18 complete, verification passed 15/15*

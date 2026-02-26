@@ -42,7 +42,7 @@
 - [ ] **Phase 15: Coworker Onboarding** - Installation guide, migration path, verification on Scott's repo
 - [ ] **Phase 16: Upstream PR** - Write and submit PR to glittercowboy/get-shit-done as a human contribution
 - [ ] **Phase 17: Fork Maintenance Strategy** - Upstream tracking, selective merging, version strategy
-- [ ] **Phase 18: Explorer Recon Step for Research** - Field recon sub-agents before full research team assembly
+- [x] **Phase 18: Explorer Recon Step for Research** - Field recon sub-agents before full research team assembly -- completed 2026-02-26
 
 ## Phase Details
 
@@ -128,8 +128,8 @@ Upstream (glittercowboy/get-shit-done) releases independently. The fork must tra
 **Plans:** 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md -- Stage 4.5 recon insertion in plan-phase.md and research-phase.md workflows
-- [ ] 18-02-PLAN.md -- recon_context section in gsd-phase-researcher.md agent
+- [x] 18-01-PLAN.md -- Stage 4.5 recon insertion in plan-phase.md and research-phase.md workflows
+- [x] 18-02-PLAN.md -- recon_context section in gsd-phase-researcher.md agent
 
 **Details:**
 The research phase is the most human-guided part of GSD and where creative understanding happens. Currently, full research teams are assembled without prior context about the problem space, wasting heavy team agent tokens on first-pass discovery. This phase adds a layered approach: spawn lightweight explorer sub-agents (Task tool with Explore subagent_type) to do initial field recon, return digested reports, then use those reports to inform research team composition and personalize agent prompts. Key principle: this is NOT about saving tokens -- it's about spending them more effectively at the stage where understanding compounds into everything downstream (planning, execution, verification can all run in auto mode if research is solid). GSD is no longer solely a software development framework, so research teams must adapt to the problem domain rather than defaulting to adversarial patterns.
@@ -146,8 +146,8 @@ Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17 -> 18
 | 15. Coworker Onboarding | v2.1.0 | 0/2 | Planned | - |
 | 16. Upstream PR | v2.1.0 | 0/0 | Not planned | - |
 | 17. Fork Maintenance Strategy | v2.1.0 | 0/0 | Not planned | - |
-| 18. Explorer Recon for Research | v2.1.0 | 0/2 | Planned | - |
+| 18. Explorer Recon for Research | v2.1.0 | 2/2 | Complete | 2026-02-26 |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-26 -- Phase 18 planned (2 plans in 1 wave)*
+*Last updated: 2026-02-26 -- Phase 18 complete (2/2 plans, verification passed 15/15)*
