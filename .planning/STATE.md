@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 18 - Explorer Recon Step for Research (All plans complete)
+**Current focus:** Phase 19 - Elevate Decision + Integrity Check (All plans complete)
 
 ## Current Position
 
-Phase: 18 of 18 (Explorer Recon Step for Research)
-Plan: 2 of 2 (Phase 18 complete)
-Status: Phase 18 complete -- verification passed 15/15; v2.1.0-distribution milestone partial (1/4 phases)
-Last activity: 2026-02-26 -- Phase 18 executed and verified (2 plans, 4 commits, 15/15 must-haves)
+Phase: 19 of 19 (Elevate Decision + Integrity Check)
+Plan: 3 of 3 (all complete)
+Status: Phase 19 complete -- verification passed 15/15; v2.1.0-distribution milestone partial (2/5 phases)
+Last activity: 2026-02-26 -- Phase 19 executed (3 plans across 3 waves)
 
-Progress: [████░░░░░░░░░░░░░░░░] ~10% (Phase 18 of 18 done; phases 15-17 not yet planned)
+Progress: [████████░░░░░░░░░░░░] ~40% (Phases 18-19 done; phases 15-17 not yet planned)
 
 ## Performance Metrics
 
@@ -51,17 +51,26 @@ v2.0.0 milestone decisions archived in .planning/milestones/v2.0.0-agent-mode-RO
 - minimal composition_hint forces USE_HYBRID=false in research-phase.md
 - AGENT_MODE detection added to research-phase.md Step 1 (was missing, required for recon auto-decide branch)
 
+**Phase 19 decisions (2026-02-26):**
+- 4 recon probes for integrity-check (state, roadmap, references, decisions) -- decisions probe conditional on PROJECT.md
+- Lettered options pattern (a/b/c/d) shared across integrity-check and elevate-decision
+- Probe output to .scratch/ subdirs -- session-ephemeral, cleaned up after
+- Elevate-decision always interactive even when agent_mode=true
+- Recursive branching limited to 1 level deep
+- MEMORY.md edits require explicit human approval in Pass 6
+
 ### Pending Todos
 
-1 pending todo:
-- **Create elevate-decision skill for architectural decision propagation** (tooling) -- audit, cascade-check, and propagate decisions across all planning artifacts
+No pending todos.
 
 *Resolved:*
+- ~~Create elevate-decision skill for architectural decision propagation~~ -- Phase 19 complete (3 plans: integrity-check, Passes 1-3, Passes 4-6)
 - ~~Add explorer recon step to research workflow~~ -- Phase 18 complete (plan 01: workflows, plan 02: researcher agent)
 
 ### Roadmap Evolution
 
 - Phase 18 added: Explorer Recon Step for Research (field recon sub-agents before full research team)
+- Phase 19 added: Elevate Decision + Integrity Check (decision extraction pipeline + planning doc integrity verification)
 
 ### Blockers/Concerns
 
@@ -70,10 +79,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 18 complete -- verification passed 15/15
+Stopped at: Phase 19 complete
 Resume file: N/A
-Next action: /gsd:plan-phase 15 (Coworker Onboarding -- first unplanned phase in order)
+Next action: /gsd:plan-phase 15 (or /gsd:plan-phase 16 or 17 -- remaining unplanned phases)
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-26 -- Phase 18 complete, verification passed 15/15*
+*Last updated: 2026-02-26 -- Phase 19 complete (3/3 plans, verification passed 15/15)*
