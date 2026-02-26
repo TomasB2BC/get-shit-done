@@ -7,7 +7,7 @@
 
 - [x] **v1.12.0-hybrid** -- Phases 1-7 (shipped 2026-02-08) | [Archive](milestones/v1.12.0-hybrid-ROADMAP.md)
 - [x] **v2.0.0-agent-mode** -- Phases 8-14 (shipped 2026-02-22) | [Archive](milestones/v2.0.0-agent-mode-ROADMAP.md)
-- [ ] **v2.1.0-distribution** -- Phases 15-17
+- [ ] **v2.1.0-distribution** -- Phases 15-18
 
 <details>
 <summary>[x] v1.12.0-hybrid (Phases 1-7) -- SHIPPED 2026-02-08</summary>
@@ -42,6 +42,7 @@
 - [ ] **Phase 15: Coworker Onboarding** - Installation guide, migration path, verification on Scott's repo
 - [ ] **Phase 16: Upstream PR** - Write and submit PR to glittercowboy/get-shit-done as a human contribution
 - [ ] **Phase 17: Fork Maintenance Strategy** - Upstream tracking, selective merging, version strategy
+- [ ] **Phase 18: Explorer Recon Step for Research** - Field recon sub-agents before full research team assembly
 
 ## Phase Details
 
@@ -110,10 +111,33 @@ Plans:
 **Details:**
 Upstream (glittercowboy/get-shit-done) releases independently. The fork must track upstream for bug fixes and new features while maintaining fork-specific additions (agent mode, hybrid teams, project aliases). Current divergence: 76 files changed from upstream. The fork uses ~/.claude/ paths (matching upstream format). Key risk: upstream refactors a file that the fork has heavily modified (e.g., execute-phase.md, gsd-tools.js). Strategy should handle this gracefully. Scott and potentially other users will depend on the fork staying current.
 
+### Phase 18: Explorer Recon Step for Research
+**Goal:** Add lightweight explorer sub-agents as a field recon pre-step in the research workflow, providing personalized context before full research team assembly
+
+**Depends on:** Phase 17 (fork stable and maintained before modifying core workflows)
+
+**Requirements:** TBD
+
+**Success Criteria** (what must be TRUE):
+1. Research workflow spawns explorer sub-agents for initial field recon before assembling full research team
+2. Explorer reports are digested summaries (not raw findings) that inform team composition decisions
+3. Team composition adapts based on recon output -- not always adversarial, matches problem domain
+4. Recon context is injected into research team agent prompts for better personalization
+5. Human review point exists between recon output and full research team assembly
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md -- Stage 4.5 recon insertion in plan-phase.md and research-phase.md workflows
+- [ ] 18-02-PLAN.md -- recon_context section in gsd-phase-researcher.md agent
+
+**Details:**
+The research phase is the most human-guided part of GSD and where creative understanding happens. Currently, full research teams are assembled without prior context about the problem space, wasting heavy team agent tokens on first-pass discovery. This phase adds a layered approach: spawn lightweight explorer sub-agents (Task tool with Explore subagent_type) to do initial field recon, return digested reports, then use those reports to inform research team composition and personalize agent prompts. Key principle: this is NOT about saving tokens -- it's about spending them more effectively at the stage where understanding compounds into everything downstream (planning, execution, verification can all run in auto mode if research is solid). GSD is no longer solely a software development framework, so research teams must adapt to the problem domain rather than defaulting to adversarial patterns.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17
+Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17 -> 18
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|---------------|--------|-----------|
@@ -122,7 +146,8 @@ Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17
 | 15. Coworker Onboarding | v2.1.0 | 0/2 | Planned | - |
 | 16. Upstream PR | v2.1.0 | 0/0 | Not planned | - |
 | 17. Fork Maintenance Strategy | v2.1.0 | 0/0 | Not planned | - |
+| 18. Explorer Recon for Research | v2.1.0 | 0/2 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
-*Last updated: 2026-02-22 -- v2.1.0-distribution milestone created (3 phases)*
+*Last updated: 2026-02-26 -- Phase 18 planned (2 plans in 1 wave)*
