@@ -43,6 +43,7 @@
 - [ ] **Phase 16: Upstream PR** - Write and submit PR to glittercowboy/get-shit-done as a human contribution
 - [ ] **Phase 17: Fork Maintenance Strategy** - Upstream tracking, selective merging, version strategy
 - [x] **Phase 18: Explorer Recon Step for Research** - Field recon sub-agents before full research team assembly -- completed 2026-02-26
+- [ ] **Phase 19: Elevate Decision + Integrity Check** - Decision extraction pipeline and planning doc integrity verification skills (3 plans)
 
 ## Phase Details
 
@@ -111,6 +112,31 @@ Plans:
 **Details:**
 Upstream (glittercowboy/get-shit-done) releases independently. The fork must track upstream for bug fixes and new features while maintaining fork-specific additions (agent mode, hybrid teams, project aliases). Current divergence: 76 files changed from upstream. The fork uses ~/.claude/ paths (matching upstream format). Key risk: upstream refactors a file that the fork has heavily modified (e.g., execute-phase.md, gsd-tools.js). Strategy should handle this gracefully. Scott and potentially other users will depend on the fork staying current.
 
+### Phase 19: Elevate Decision + Integrity Check
+**Goal:** Build two skills: `/gsd:integrity-check` (cross-reference planning docs against ground truth) and `/gsd:elevate-decision` (6-pass extraction + propagation pipeline for architectural decisions)
+
+**Depends on:** Phase 18 (stable codebase, existing skill patterns to follow)
+
+**Requirements:** ED-01, ED-02, ED-03, ED-04, ED-05
+
+**Success Criteria** (what must be TRUE):
+1. `/gsd:integrity-check` skill exists as standalone GSD command -- parallel recon agents scan .planning/ vs evidence sources (git, logs), present gaps with lettered fix options, batch corrections committed
+2. `/gsd:elevate-decision` skill exists with 6-pass pipeline -- seed understanding, integrity check, deep dig, boundaries, stress test, crystallization+close
+3. Superpower layer handles Pass 1 (extraction) and Pass 5 (adversarial) as project-agnostic patterns
+4. GSD command layer handles Pass 2 (integrity-check call), Pass 4 (boundaries with .planning/ context), Pass 6 (propagation with style-matched edits)
+5. Recursive branching supported -- nested decision extraction during Deep Dig with park-as-todo option
+6. All propagated edits are style-matched to target files and carry provenance in commit messages
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md -- integrity-check command + workflow (standalone skill)
+- [ ] 19-02-PLAN.md -- elevate-decision command + workflow Passes 1-3 (seed, integrity, deep dig)
+- [ ] 19-03-PLAN.md -- elevate-decision workflow Passes 4-6 (boundaries, stress test, crystallization)
+
+**Details:**
+Design doc: docs/plans/2026-02-26-elevate-decision-design.md (approved). Two skills with shared architecture: integrity-check is standalone and reusable (callable from elevate-decision Pass 2, progress, plan-phase, or standalone). Elevate-decision is a 6-pass pipeline: (1) Seed Understanding -- AI reads more, human writes less; (2) Landscape Integrity Check -- fix stale docs before writing new decisions; (3) Deep Dig -- structured questioning with lettered options, recursive; (4) Boundaries -- scope definition with edge-case questions; (5) Stress Test -- adversarial challenge, always run; (6) Crystallization+Close -- structured record, surgical edits, provenance commits. Skill layers: superpower (extraction+adversarial), GSD command (integrity+boundaries+propagation), standalone (integrity-check). Key principle: extraction is the core value -- human time in the loop is the most valuable resource.
+
 ### Phase 18: Explorer Recon Step for Research
 **Goal:** Add lightweight explorer sub-agents as a field recon pre-step in the research workflow, providing personalized context before full research team assembly
 
@@ -137,7 +163,7 @@ The research phase is the most human-guided part of GSD and where creative under
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17 -> 18
+Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17 -> 18 -> 19
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|---------------|--------|-----------|
@@ -147,6 +173,7 @@ Phases execute in numeric order: 1 -> ... -> 14 -> 15 -> 16 -> 17 -> 18
 | 16. Upstream PR | v2.1.0 | 0/0 | Not planned | - |
 | 17. Fork Maintenance Strategy | v2.1.0 | 0/0 | Not planned | - |
 | 18. Explorer Recon for Research | v2.1.0 | 2/2 | Complete | 2026-02-26 |
+| 19. Elevate Decision + Integrity Check | v2.1.0 | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-06*
