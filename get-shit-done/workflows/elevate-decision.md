@@ -345,26 +345,463 @@ Wait for human response. Respect their choice -- if they want more rounds, conti
 
 
 ## 5. Pass 4 -- Boundaries
-<!-- Plan 19-03 implements this section -->
-<!-- Same question-set pattern as Pass 3 but focused on edge cases and scope -->
-<!-- Output: "This decision governs [X, Y, Z]. Does NOT govern [A, B, C]." -->
+
+```
+>> Pass 4: Boundaries
+>> "What does this govern? What doesn't it touch?"
+```
+
+**Sub-step 5.1: Generate edge-case question set**
+
+Based on the decision understanding from Passes 1-3, generate a set of 5 edge-case questions. Each tests the scope boundary: "Does this also apply to X?", "Does this override Y?", "What happens when Z?"
+
+Format (same pattern as Pass 3):
+
+```
+## Boundaries: Question Set {round}
+
+**Q1: [Edge case question about scope -- does this apply to X?]**
+  a) [Pre-digested answer -- applies to this case because...]
+  b) [Pre-digested answer -- does NOT apply to this case because...]
+  c) [Pre-digested answer -- partially applies with conditions...]
+  d) Write your own
+
+**Q2: [Edge case -- does this override existing behavior Y?]**
+  a) [Option]
+  b) [Option]
+  c) [Option]
+  d) Write your own
+
+**Q3: [Edge case -- what happens at boundary condition Z?]**
+  a) [Option]
+  b) [Option]
+  c) [Option]
+  d) Write your own
+
+**Q4: [Edge case -- interaction with adjacent system/decision]**
+  a) [Option]
+  b) [Option]
+  c) [Option]
+  d) Write your own
+
+**Q5: [Edge case -- temporal: does this apply retroactively?]**
+  a) [Option]
+  b) [Option]
+  c) [Option]
+  d) Write your own
+
+---
+>> Which questions would you like to answer? (e.g., "1a, 2b, 3c" or "all")
+>> Type "clear" if the boundaries are already obvious.
+```
+
+**Sub-step 5.2: Parse responses**
+
+Parse the human's selections (same parsing logic as Pass 3). Update scope understanding based on answers.
+
+**If human says "clear":** Skip remaining boundary questions and proceed to scope statement.
+
+**Sub-step 5.3: Loop control**
+
+After each boundary round, evaluate:
+- If all scope questions are addressed or human says "clear" -- proceed to scope statement
+- If more edge cases need exploration -- generate another round
+- Maximum 3 rounds for boundaries (tighter than Deep Dig's 5 -- boundaries are more constrained)
+
+After 3 rounds without "clear" signal:
+```
+>> 3 rounds of boundary questions complete. Generating scope statement.
+```
+
+**Sub-step 5.4: Produce scope statement**
+
+Based on all boundary answers, produce a clean scope statement:
+
+```
+>> Scope Statement:
+   This decision governs:
+   - [X -- specific domain, system, or behavior]
+   - [Y -- specific domain, system, or behavior]
+   - [Z -- specific domain, system, or behavior]
+
+   This decision does NOT govern:
+   - [A -- explicitly out of scope]
+   - [B -- explicitly out of scope]
+   - [C -- explicitly out of scope]
+
+>> Confirm scope or adjust?
+```
+
+Wait for human response.
+
+**Sub-step 5.5: Confirmation**
+
+If human confirms: Store the final scope statement for Pass 6 crystallization.
+If human adjusts: Apply their adjustments to the scope statement, re-display, confirm again.
 
 
 ## 6. Pass 5 -- Stress Test
-<!-- Plan 19-03 implements this section -->
-<!-- Adversarial challenge: strongest counterargument + 5 attack-angle questions -->
-<!-- Always run -- no shortcuts, no --trusted flag -->
+
+```
+>> Pass 5: Stress Test
+>> "The strongest case against this decision"
+```
+
+**IMPORTANT:** Always run the full stress test. No --trusted flag, no shortcuts, no skipping. Even well-debated decisions benefit from one adversarial pass.
+
+**Sub-step 6.1: Construct counterargument**
+
+Based on everything gathered in Passes 1-4, construct the strongest possible counterargument. This must be genuine, not a strawman:
+
+```
+>> The best case against this decision:
+   [2-3 paragraph counterargument -- steel-man the opposition.
+    Consider: what would a thoughtful skeptic say?
+    What evidence supports NOT making this decision?
+    What are the real costs and risks?]
+```
+
+**Sub-step 6.2: Present 5 attack-angle questions**
+
+```
+## Stress Test: Attack Angles
+
+**Q1: Contradiction** -- Does this contradict any existing decisions?
+  a) [Pre-digested: specific contradiction identified with existing decision X]
+  b) [Pre-digested: no contradiction, compatible because...]
+  c) [Pre-digested: partial tension with Y but manageable because...]
+  d) Write your own assessment
+
+**Q2: Scalability** -- Will this hold up as the project grows?
+  a) [Pre-digested: scales well because...]
+  b) [Pre-digested: will need revision at [specific threshold or condition]]
+  c) [Pre-digested: does not scale, but acceptable for current scope because...]
+  d) Write your own assessment
+
+**Q3: Dependency Risk** -- What breaks if a dependency changes?
+  a) [Pre-digested: low risk because dependencies are stable/minimal]
+  b) [Pre-digested: specific dependency risk -- if X changes, then Y breaks]
+  c) [Pre-digested: risk exists but mitigated by...]
+  d) Write your own assessment
+
+**Q4: Opportunity Cost** -- What are we giving up by choosing this?
+  a) [Pre-digested: specific alternative we are foregoing and why that is acceptable]
+  b) [Pre-digested: minimal opportunity cost because no strong alternatives exist]
+  c) [Pre-digested: significant cost of foregoing X but justified because...]
+  d) Write your own assessment
+
+**Q5: Second-Order Effects** -- What downstream changes does this force?
+  a) [Pre-digested: specific downstream effect that needs attention]
+  b) [Pre-digested: no significant downstream effects expected]
+  c) [Pre-digested: downstream effects exist and need mitigation -- specifically...]
+  d) Write your own assessment
+
+---
+>> Answer all 5 or select which matter most.
+>> The decision either survives stronger or gets modified.
+```
+
+Wait for human responses.
+
+**Sub-step 6.3: Process attack results**
+
+Parse responses. For each attack angle, evaluate whether it reveals a genuine weakness.
+
+If any attack angle reveals a genuine weakness:
+
+```
+>> This challenge has merit: [brief description of the weakness]
+   a) Modify the decision to address it
+   b) Accept the risk with documented rationale
+   c) Revisit Pass 3 with this new constraint
+```
+
+Wait for human response.
+
+**If "a" (modify):** Update the decision understanding to incorporate the modification. Note the modification source (which attack angle prompted it).
+
+**If "b" (accept risk):** Record the accepted risk with the human's rationale. This becomes part of the decision record in Pass 6.
+
+**If "c" (revisit):** Return to Pass 3 (Deep Dig) with the new constraint as context. The constraint becomes an additional input to question generation.
+
+**Sub-step 6.4: Stress test conclusion**
+
+```
+>> Stress test complete. Decision [survived intact | was modified to address {attack angle}].
+>> Proceeding to crystallization.
+```
 
 
 ## 7. Pass 6 -- Crystallization + Close
-<!-- Plan 19-03 implements this section -->
-<!-- Final statement, structured record, edit target discovery, batch execution -->
-<!-- Commit with provenance, rollback offer -->
+
+```
+>> Pass 6: Crystallization + Close
+>> "Record, propagate, commit"
+```
+
+**Sub-step 7.1: Present final decision statement**
+
+Distill everything from Passes 1-5 into a crisp 1-3 sentence decision statement:
+
+```
+>> Final Decision Statement:
+   [1-3 sentence crystallized decision -- precise, actionable, unambiguous]
+```
+
+**Sub-step 7.2: Present structured record**
+
+```
+## Decision Record: [Name]
+
+**Statement:** [1-3 sentences -- what we decided]
+**Rationale:** [What informed it -- research findings, discussion points, evidence from Passes 1-5]
+**Provenance:** Session [YYYY-MM-DD], during [context -- phase discussion, research review, architecture planning, etc.]
+**Scope:**
+  - Governs: [from Pass 4 scope statement]
+  - Does NOT govern: [from Pass 4 scope statement]
+**Accepted Risks:** [from Pass 5, if any -- "None" if decision survived intact]
+**Connections:** [Extends/modifies/supersedes which existing decisions, if any. Branching decisions noted in Pass 3, if any.]
+**Date:** [YYYY-MM-DD]
+```
+
+**Sub-step 7.3: Human confirms**
+
+```
+>> Review the decision record above. Confirm or adjust before propagation.
+```
+
+Wait for human response. If adjustments requested, apply them and re-display. This is the final shape of the decision -- once confirmed, propagation begins.
+
+**Sub-step 7.4: Edit target discovery**
+
+Spawn 3-5 parallel Explore recon probes to discover which files need updates:
+
+```bash
+mkdir -p .scratch/elevate
+```
+
+**Probe A: PROJECT.md**
+```
+Task(
+  prompt="You are an edit-target recon agent. Scan .planning/PROJECT.md for sections affected by this decision:
+
+Decision: {final_decision_statement}
+Scope: {governs_list} / Does NOT govern: {not_governs_list}
+
+Look for:
+- Key Decisions table -- does it need a new row?
+- Kitchen model or architecture section -- does it reference this domain?
+- Any section where this decision changes the current description
+
+For each potential edit target, output:
+TARGET: [file path]
+SECTION: [heading or table name]
+CURRENT: [what it currently says, brief quote]
+PROPOSED: [what it should say after this decision]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+
+Write to: .scratch/elevate/pass6-targets-A.md
+If PROJECT.md does not exist, write: NO TARGETS FOUND",
+  subagent_type="Explore",
+  description="Edit target discovery: PROJECT.md"
+)
+```
+
+**Probe B: ROADMAP.md + STATE.md**
+```
+Task(
+  prompt="You are an edit-target recon agent. Scan .planning/ROADMAP.md and .planning/STATE.md for sections affected by this decision:
+
+Decision: {final_decision_statement}
+Scope: {governs_list} / Does NOT govern: {not_governs_list}
+
+Look for:
+- ROADMAP.md phase descriptions that reference this domain
+- STATE.md Accumulated Context / Decisions section
+- STATE.md Pending Todos that this decision resolves
+- Any claims that this decision supersedes or modifies
+
+For each potential edit target, output:
+TARGET: [file path]
+SECTION: [heading or table name]
+CURRENT: [what it currently says, brief quote]
+PROPOSED: [what it should say after this decision]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+
+Write to: .scratch/elevate/pass6-targets-B.md",
+  subagent_type="Explore",
+  description="Edit target discovery: ROADMAP + STATE"
+)
+```
+
+**Probe C: REQUIREMENTS.md + active PLAN.md files**
+```
+Task(
+  prompt="You are an edit-target recon agent. Scan .planning/REQUIREMENTS.md and any active (incomplete) PLAN.md files for sections affected by this decision:
+
+Decision: {final_decision_statement}
+Scope: {governs_list} / Does NOT govern: {not_governs_list}
+
+Look for:
+- Requirements that this decision clarifies or constrains
+- Plan assumptions that this decision changes
+- Plan context sections that should reference this decision
+
+For each potential edit target, output:
+TARGET: [file path]
+SECTION: [heading or table name]
+CURRENT: [what it currently says, brief quote]
+PROPOSED: [what it should say after this decision]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+
+Write to: .scratch/elevate/pass6-targets-C.md
+If REQUIREMENTS.md does not exist, check for active plans only.",
+  subagent_type="Explore",
+  description="Edit target discovery: REQUIREMENTS + active plans"
+)
+```
+
+**Probe D: MEMORY.md + other .planning/ root files** (only if MEMORY.md exists)
+```
+Task(
+  prompt="You are an edit-target recon agent. Scan .planning/MEMORY.md and any other .planning/ root-level markdown files for sections affected by this decision:
+
+Decision: {final_decision_statement}
+Scope: {governs_list} / Does NOT govern: {not_governs_list}
+
+Look for:
+- Memory entries that this decision extends or modifies
+- Any .planning/ file that discusses this domain
+- Stale references that this decision supersedes
+
+IMPORTANT: MEMORY.md edits are sensitive -- only propose HIGH confidence changes.
+
+For each potential edit target, output:
+TARGET: [file path]
+SECTION: [heading or table name]
+CURRENT: [what it currently says, brief quote]
+PROPOSED: [what it should say after this decision]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+
+Write to: .scratch/elevate/pass6-targets-D.md
+If MEMORY.md does not exist, scan other .planning/ root files only.",
+  subagent_type="Explore",
+  description="Edit target discovery: MEMORY + other planning files"
+)
+```
+
+Wait for all probes to complete.
+
+**Sub-step 7.5: Present edit targets with lettered options**
+
+Read all probe output files. Deduplicate targets (same file + same section = one target). Filter out LOW confidence targets unless no HIGH/MEDIUM targets exist.
+
+Present each target with lettered options:
+
+```
+## Edit Targets
+
+**Target A: {file_path} -- {section name}**
+  Current: {brief quote of what it currently says}
+  Proposed: {what it should say after this decision}
+  Confidence: {HIGH | MEDIUM}
+
+  a) Apply this edit
+  b) Skip this target
+  c) Adjust the edit (describe what to change)
+
+**Target B: {file_path} -- {section name}**
+  Current: {brief quote}
+  Proposed: {proposed change}
+  Confidence: {HIGH | MEDIUM}
+
+  a) Apply this edit
+  b) Skip this target
+  c) Adjust the edit
+
+[Additional targets...]
+
+---
+>> Select for each target (e.g., "Aa, Ba, Cb, Dc-[your adjustment]")
+```
+
+Wait for human response.
+
+**CRITICAL: MEMORY.md edits require explicit human approval.** Never auto-apply MEMORY.md changes even if confidence is HIGH. Always present them for review.
+
+**Sub-step 7.6: Execute approved edits**
+
+For each target where human selected "a" (apply):
+1. Read the target file
+2. Read the surrounding content to calibrate style (column widths, heading format, list format, voice, detail level)
+3. Apply the proposed edit using Edit tool -- MATCH the file's existing style
+4. Track the changed file path
+
+For each target where human selected "c" (adjust):
+1. Apply the edit with the human's modification
+2. Track the changed file path
+
+For each target where human selected "b" (skip):
+- No action needed
+
+**Sub-step 7.7: Clean up probe files**
+
+```bash
+rm .scratch/elevate/pass6-targets-*.md 2>/dev/null
+```
+
+If `.scratch/elevate/` is empty:
+```bash
+rmdir .scratch/elevate/ 2>/dev/null
+```
+
+If `.scratch/` is empty:
+```bash
+rmdir .scratch/ 2>/dev/null
+```
+
+**Sub-step 7.8: Commit with provenance**
+
+If any files were changed:
+
+```bash
+git add [all changed files]
+git commit -m "docs: elevate decision -- [decision name] (source: [session context])"
+```
+
+The commit message MUST follow this format:
+- Prefix: `docs: elevate decision --`
+- Name: the decision name from the record
+- Source: where this decision originated (e.g., "phase 19 discussion", "research review", "architecture planning")
+
+**Sub-step 7.9: Display completion and rollback offer**
+
+```
+>> Decision crystallized and propagated.
+   Changed {N} files: [list of file paths]
+   Commit: [short hash]
+
+   To undo: git revert HEAD
+```
+
+If no files were changed (all targets skipped):
+```
+>> Decision recorded but no planning docs were updated.
+   The decision record is captured in this conversation.
+   Run /gsd:elevate-decision again to propagate if needed.
+```
 
 
 ## 8. Session Complete
-<!-- Plan 19-03 implements this section -->
-<!-- Final summary display -->
+
+```
+>> elevate-decision complete.
+   Decision: [decision name]
+   Passes completed: 6/6
+   Files updated: {N}
+
+   The decision is now recorded and propagated across planning artifacts.
+```
 
 
 </process>
