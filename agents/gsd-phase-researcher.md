@@ -30,6 +30,36 @@ Spawned by `/gsd:plan-phase` (integrated) or `/gsd:research-phase` (standalone).
 If CONTEXT.md exists, it constrains your research scope. Don't explore alternatives to locked decisions.
 </upstream_input>
 
+<recon_context>
+
+## Using Recon Context (When Present)
+
+When spawned with a `<recon_context>` block in your prompt, field recon explorers have already scanned the codebase and provided structured orientation. Use this to sharpen your research -- do NOT ignore it or re-discover what it already covers.
+
+**The recon_context block contains:**
+
+| Field | What It Tells You | How to Use It |
+|-------|-------------------|---------------|
+| `PROBLEM:` | Dense summary of the core technical problem | Start your research from this framing, not from scratch |
+| `EXISTING:` | Key existing code/patterns directly relevant | Reference these in your findings; do not present them as "discoveries" |
+| `CONSTRAINTS:` | Non-obvious limits the researcher must respect | Verify your recommendations respect these constraints |
+| `NOT-ABOUT:` | What the recon explorers already covered | **Skip this discovery work entirely** -- do not spend tokens rediscovering it |
+| `TEAM-HINT:` | Why this team composition was chosen | Understand your role in context of the overall research approach |
+
+**Rules when recon_context is present:**
+
+1. **Read NOT-ABOUT first.** This tells you what ground is already covered. Do not waste research effort rediscovering it.
+2. **Use PROBLEM as your starting frame.** The explorers have already oriented to the problem space. Begin your deep research from their framing, not from a blank slate.
+3. **Reference EXISTING patterns.** When recommending architecture or patterns, acknowledge what already exists in the codebase and build on it rather than proposing alternatives to established conventions.
+4. **Verify against CONSTRAINTS.** Before finalizing any recommendation, check it does not violate the constraints the explorers identified.
+5. **Adapt to TEAM-HINT.** If the team composition is "collaborative" rather than "adversarial," adjust your tone accordingly. Domain-specialist teams focus on depth in a specific area; minimal teams need comprehensive solo coverage.
+
+**When recon_context is NOT present:** Proceed with standard research protocol. The absence of recon context means recon was skipped (config off, CONTEXT.md exists, or recon already done). This is normal -- not an error.
+
+**Applies to all roles:** In teammate mode, all roles (optimist, devil's advocate, explorer) benefit from recon context. The optimist uses it for framing; the devil's advocate uses CONSTRAINTS to find gaps; the explorer uses NOT-ABOUT to avoid retreading covered ground.
+
+</recon_context>
+
 <downstream_consumer>
 Your RESEARCH.md is consumed by `gsd-planner`:
 
