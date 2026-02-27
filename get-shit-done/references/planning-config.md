@@ -211,7 +211,8 @@ ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:s
   "research": false,
   "debug": false,
   "verification": false,
-  "codebase_mapping": false
+  "codebase_mapping": false,
+  "delivery": false
 }
 ```
 
@@ -221,16 +222,18 @@ ORCH_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"orchestration"[[:s
 | `debug` | `false` | debug.md hypothesis testing |
 | `verification` | `false` | execute-phase.md verification step |
 | `codebase_mapping` | `false` | map-codebase.md collaborative mapping |
+| `delivery` | `false` | package.md stakeholder persona review, auto-dispatch deliver mode |
 
 **Reading the field (use grep -A5 to avoid collision with workflow.research):**
 ```bash
-AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
-AGENT_TEAMS_DEBUG=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"debug"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
-AGENT_TEAMS_VERIFICATION=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"verification"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
-AGENT_TEAMS_CODEBASE_MAPPING=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"codebase_mapping"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_DEBUG=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"debug"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_VERIFICATION=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"verification"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_CODEBASE_MAPPING=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"codebase_mapping"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+AGENT_TEAMS_DELIVERY=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"delivery"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
 ```
 
-**Important:** Use `grep -A5 '"agent_teams"'` prefix to scope the search to the agent_teams object. Without this, `"research"` would match `workflow.research` as well.
+**Important:** Use `grep -A6 '"agent_teams"'` prefix to scope the search to the agent_teams object. Without this, `"research"` would match `workflow.research` as well.
 
 </agent_teams_config>
 
@@ -255,7 +258,7 @@ AGENT_TEAMS_ENV=${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}
 USE_HYBRID=false
 if [ "$ORCH_MODE" = "hybrid" ] && [ "$AGENT_TEAMS_ENV" = "1" ]; then
   # Step 4: Per-command toggle check (only when compound check passes)
-  AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+  AGENT_TEAMS_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -A6 '"agent_teams"' | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
   if [ "$AGENT_TEAMS_RESEARCH" = "true" ]; then
     USE_HYBRID=true
   fi
@@ -277,6 +280,7 @@ fi
 | debug.md | `agent_teams.debug` | Competing hypotheses pattern |
 | execute-phase.md (verify) | `agent_teams.verification` | Adversarial verification team |
 | map-codebase.md | `agent_teams.codebase_mapping` | Collaborative mapping team |
+| package.md | `agent_teams.delivery` | Stakeholder persona review agent spawned after document creation |
 
 **Graceful fallback:** When hybrid conditions are not fully met, commands fall back to classic mode silently (with a one-time warning). This ensures GSD never breaks due to missing env var or config.
 
