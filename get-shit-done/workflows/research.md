@@ -113,13 +113,14 @@ fi
 mkdir -p "${RESEARCH_DIR}/recon"
 ```
 
-Spawn 3 parallel Tasks. Each MUST use `subagent_type="Explore"`:
+Spawn 3 parallel Tasks. Each MUST use `subagent_type="Explore"`.
+**NOTE:** Explore agents are read-only (no Write tool). They return their digest as the Task result. The orchestrator captures return values and writes RECON.md.
 
-| Role | Output File | Question |
-|------|-------------|----------|
-| problem-space | `${RESEARCH_DIR}/recon/probe-problem.md` | "What is the core problem or question here: '{TOPIC}'? What existing code, files, or project context is directly relevant?" |
-| ecosystem-scan | `${RESEARCH_DIR}/recon/probe-ecosystem.md` | "What patterns, tools, conventions, or prior work already exist in this codebase that relate to: '{TOPIC}'?" |
-| constraint-finder | `${RESEARCH_DIR}/recon/probe-constraints.md` | "What are the constraints for '{TOPIC}': existing code to integrate with, config patterns, non-obvious limits, things that must stay compatible?" |
+| Role | Question |
+|------|----------|
+| problem-space | "What is the core problem or question here: '{TOPIC}'? What existing code, files, or project context is directly relevant?" |
+| ecosystem-scan | "What patterns, tools, conventions, or prior work already exist in this codebase that relate to: '{TOPIC}'?" |
+| constraint-finder | "What are the constraints for '{TOPIC}': existing code to integrate with, config patterns, non-obvious limits, things that must stay compatible?" |
 
 Each probe prompt follows:
 ```
@@ -135,19 +136,19 @@ Resources: read local project files only (.planning/, relevant source files).
 Do NOT do web research -- that is reserved for the full research team.
 
 Return a 200-400 word digest. No padding. Dense and actionable.
-Focus: facts the research team needs to start well-oriented.
-
-Write your digest to: [output file path]",
+Focus: facts the research team needs to start well-oriented.",
   subagent_type="Explore",
   description="Recon probe: [role]"
 )
 ```
 
-**Step R2: Wait for probes, verify files exist**
+**Step R2: Capture probe results from Task return values**
 
-**Step R3: Synthesize into RECON.md**
+Store each Task's return value as PROBE_PROBLEM, PROBE_ECOSYSTEM, PROBE_CONSTRAINTS.
 
-Read all 3 probe files. Fill the RECON.md template:
+**Step R3: Write RECON.md from captured results**
+
+Use the 3 captured probe results to fill the RECON.md template:
 
 ```markdown
 # Recon: {TOPIC}
@@ -184,13 +185,7 @@ TEAM-HINT: [composition_hint value + 1-sentence rationale]
 
 Write to `${RESEARCH_DIR}/recon/RECON.md`.
 
-**Step R4: Clean up raw probe files**
-
-```bash
-rm -f "${RESEARCH_DIR}/recon/probe-problem.md"
-rm -f "${RESEARCH_DIR}/recon/probe-ecosystem.md"
-rm -f "${RESEARCH_DIR}/recon/probe-constraints.md"
-```
+**Step R4: (no cleanup needed -- probes return via Task result, no files to delete)**
 
 **Step R5: Human checkpoint for team composition (or auto-decide in agent mode)**
 

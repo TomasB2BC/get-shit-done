@@ -107,7 +107,8 @@ fi
 mkdir -p "${PHASE_DIR}/recon"
 ```
 
-Spawn 3 parallel Tasks. Each MUST use `subagent_type="Explore"` (NOT general-purpose):
+Spawn 3 parallel Tasks. Each MUST use `subagent_type="Explore"` (NOT general-purpose).
+**NOTE:** Explore agents are read-only (no Write tool). They return their digest as the Task result. The orchestrator captures return values and writes RECON.md.
 
 **Problem-space probe:**
 ```
@@ -123,9 +124,7 @@ Resources: read local project files only (.planning/, relevant source files from
 Do NOT do web research -- that is reserved for the full research team.
 
 Return a 200-400 word digest. No padding. Dense and actionable.
-Focus: facts the research team needs to start well-oriented.
-
-Write your digest to: ${PHASE_DIR}/recon/probe-problem.md",
+Focus: facts the research team needs to start well-oriented.",
   subagent_type="Explore",
   description="Recon probe: problem-space"
 )
@@ -145,9 +144,7 @@ Resources: read local project files only (.planning/, relevant source files from
 Do NOT do web research -- that is reserved for the full research team.
 
 Return a 200-400 word digest. No padding. Dense and actionable.
-Focus: facts the research team needs to start well-oriented.
-
-Write your digest to: ${PHASE_DIR}/recon/probe-ecosystem.md",
+Focus: facts the research team needs to start well-oriented.",
   subagent_type="Explore",
   description="Recon probe: ecosystem-scan"
 )
@@ -167,25 +164,19 @@ Resources: read local project files only (.planning/, relevant source files from
 Do NOT do web research -- that is reserved for the full research team.
 
 Return a 200-400 word digest. No padding. Dense and actionable.
-Focus: facts the research team needs to start well-oriented.
-
-Write your digest to: ${PHASE_DIR}/recon/probe-constraints.md",
+Focus: facts the research team needs to start well-oriented.",
   subagent_type="Explore",
   description="Recon probe: constraint-finder"
 )
 ```
 
-**Step R2: Wait for all probes to complete, then verify output files exist**
+**Step R2: Capture probe results from Task return values**
 
-```bash
-ls "${PHASE_DIR}/recon/probe-problem.md" 2>/dev/null
-ls "${PHASE_DIR}/recon/probe-ecosystem.md" 2>/dev/null
-ls "${PHASE_DIR}/recon/probe-constraints.md" 2>/dev/null
-```
+Store each Task's return value as PROBE_PROBLEM, PROBE_ECOSYSTEM, PROBE_CONSTRAINTS.
 
-**Step R3: Synthesize into RECON.md**
+**Step R3: Write RECON.md from captured results**
 
-Read all 3 probe files. Fill the following RECON.md template (the orchestrator LLM fills values, not structure -- the template is mandatory):
+Use the 3 captured probe results to fill the RECON.md template (the orchestrator LLM fills values, not structure -- the template is mandatory):
 
 ```markdown
 # Recon: Phase {N} - {Name}
@@ -222,13 +213,7 @@ TEAM-HINT: [composition_hint value + 1-sentence rationale]
 
 The `composition_hint` field uses a closed vocabulary: `adversarial`, `collaborative`, `domain-specialist`, `minimal`. Write the completed RECON.md to `${PHASE_DIR}/recon/RECON.md`.
 
-**Step R4: Clean up raw probe files**
-
-```bash
-rm -f "${PHASE_DIR}/recon/probe-problem.md"
-rm -f "${PHASE_DIR}/recon/probe-ecosystem.md"
-rm -f "${PHASE_DIR}/recon/probe-constraints.md"
-```
+**Step R4: (no cleanup needed -- probes return via Task result, no files to delete)**
 
 **Step R5: Human checkpoint for team composition (or auto-decide in agent mode)**
 
