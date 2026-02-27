@@ -90,8 +90,8 @@ DECISIONS=$(grep -A20 "### Decisions" .planning/STATE.md 2>/dev/null)
 # Skip condition 1: Recon already completed (reuse existing)
 RECON_EXISTS=$(ls "${RESEARCH_DIR}/recon/RECON.md" 2>/dev/null | wc -l)
 
-# Skip condition 2: Config toggle off (default false)
-EXPLORER_RECON=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"explorer_recon"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+# Skip condition 2: Config toggle off (default true -- recon runs unless explicitly disabled)
+EXPLORER_RECON=$(cat .planning/config.json 2>/dev/null | grep -A5 '"agent_teams"' | grep -o '"explorer_recon"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
 
 if [ "$EXPLORER_RECON" = "false" ] || [ "$RECON_EXISTS" -gt 0 ]; then
   SKIP_REASON="config off"
