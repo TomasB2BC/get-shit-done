@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** GSD commands run end-to-end without human input when in agent mode
-**Current focus:** Phase 20 - Stakeholder Persona Agents in Package (Plan 01 complete, Plans 02-03 remaining)
+**Current focus:** Phase 20 - Stakeholder Persona Agents in Package (Plans 01-02 complete, Plan 03 remaining)
 
 ## Current Position
 
 Phase: 20 of 20 (Stakeholder Persona Agents in Package)
-Plan: 1 of 3
-Status: In progress -- Plan 20-01 complete (agent files + infrastructure)
-Last activity: 2026-02-27 -- Completed 20-01-PLAN.md (4 tasks, 4 commits)
+Plan: 2 of 3
+Status: In progress -- Plans 20-01 and 20-02 complete
+Last activity: 2026-02-27 -- Completed 20-02-PLAN.md (1 task, 1 commit)
 
-Progress: [████████░░░░░░░░░░░░] ~42% (Phases 18-19 done; phase 20 in progress; phases 15-17 not yet planned)
+Progress: [█████████░░░░░░░░░░░] ~47% (Phases 18-19 done; phase 20 plan 02/03 complete; phases 15-17 not yet planned)
 
 ## Performance Metrics
 
@@ -64,6 +64,11 @@ v2.0.0 milestone decisions archived in .planning/milestones/v2.0.0-agent-mode-RO
 - Delivery-packager model tiers: opus/sonnet/sonnet (nuanced stakeholder adaptation)
 - Updated grep -A5 to grep -A6 in planning-config.md after adding delivery field to agent_teams
 
+**Phase 20 Plan 02 decisions (2026-02-27):**
+- Repo copy of package.md created from installed version -- all original Steps 0-6 preserved verbatim
+- Auto-review detection uses canonical 5-step hybrid pattern from planning-config.md
+- Persona agent spawned via Task tool (not Agent Teams) for single-agent review
+
 ### Pending Todos
 
 No pending todos.
@@ -85,10 +90,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 20 Plan 01 complete
-Resume file: .planning/phases/20-stakeholder-persona-agents-in-package/20-02-PLAN.md
-Next action: Execute Plan 20-02 (or Plan 20-03 depending on wave structure)
+Stopped at: Phase 20 Plan 02 complete
+Resume file: .planning/phases/20-stakeholder-persona-agents-in-package/20-03-PLAN.md
+Next action: Execute Plan 20-03 (auto-dispatch deliver mode integration)
 
 ---
 *STATE.md created: 2026-02-11*
-*Last updated: 2026-02-27 -- Phase 20 Plan 01 complete (4/4 tasks, agent files + infrastructure)*
+*Last updated: 2026-02-27 -- Phase 20 Plan 02 complete (1/1 task, package.md --review flag)*
