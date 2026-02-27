@@ -39,6 +39,8 @@ const MODEL_PROFILES = {
   'gsd-verifier':             { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-plan-checker':         { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-integration-checker':  { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-intent-loader':        { quality: 'sonnet', balanced: 'haiku',  budget: 'haiku' },
+  'gsd-delivery-packager':    { quality: 'opus',   balanced: 'sonnet', budget: 'sonnet' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
