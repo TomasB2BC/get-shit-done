@@ -316,16 +316,22 @@ Update the decision understanding based on all answers.
 
 After processing answers, check if any answer surfaced a SECOND decision -- a distinct architectural choice that emerged during the discussion but is not the current focus.
 
-If a branching decision is detected:
+If a branching decision is detected, present via AskUserQuestion:
 
 ```
->> I'm hearing a second decision here: "[name of branching decision]"
-   a) Explore now (nested extraction -- Passes 3-6 for this branch)
-   b) Park as todo (/gsd:add-todo with full context)
-   c) Note it and continue (capture in decision record, don't interrupt)
+AskUserQuestion:
+  questions:
+    - header: "Branch detected"
+      question: "I'm hearing a second decision: '[name of branching decision]'. How should we handle it?"
+      multiSelect: false
+      options:
+        - label: "Explore now"
+          description: "Nested extraction -- Passes 3-6 for this branch"
+        - label: "Park as todo"
+          description: "Save to /gsd:add-todo with full context for later"
+        - label: "Note and continue"
+          description: "Capture in decision record, don't interrupt current flow"
 ```
-
-Wait for human response.
 
 **If human selects "a" (explore now):**
 - Enter nested extraction loop: Passes 3-6 for the branching decision
@@ -599,16 +605,22 @@ Wait for human responses.
 
 Parse responses. For each attack angle, evaluate whether it reveals a genuine weakness.
 
-If any attack angle reveals a genuine weakness:
+If any attack angle reveals a genuine weakness, present via AskUserQuestion:
 
 ```
->> This challenge has merit: [brief description of the weakness]
-   a) Modify the decision to address it
-   b) Accept the risk with documented rationale
-   c) Revisit Pass 3 with this new constraint
+AskUserQuestion:
+  questions:
+    - header: "Weakness found"
+      question: "This challenge has merit: [brief description]. How should we handle it?"
+      multiSelect: false
+      options:
+        - label: "Modify decision"
+          description: "Update the decision to address this weakness"
+        - label: "Accept risk"
+          description: "Document the risk with rationale and proceed"
+        - label: "Revisit Deep Dig"
+          description: "Return to Pass 3 with this as a new constraint"
 ```
-
-Wait for human response.
 
 **If "a" (modify):** Update the decision understanding to incorporate the modification. Note the modification source (which attack angle prompted it).
 
@@ -788,36 +800,29 @@ Wait for all probes to complete.
 
 Read all probe output files. Deduplicate targets (same file + same section = one target). Filter out LOW confidence targets unless no HIGH/MEDIUM targets exist.
 
-Present each target with lettered options:
+Present each target using AskUserQuestion (batches of up to 4 targets per call).
+
+For each target, create one question with the target details in the question text and 3 options:
 
 ```
-## Edit Targets
-
-**Target A: {file_path} -- {section name}**
-  Current: {brief quote of what it currently says}
-  Proposed: {what it should say after this decision}
-  Confidence: {HIGH | MEDIUM}
-
-  a) Apply this edit
-  b) Skip this target
-  c) Adjust the edit (describe what to change)
-
-**Target B: {file_path} -- {section name}**
-  Current: {brief quote}
-  Proposed: {proposed change}
-  Confidence: {HIGH | MEDIUM}
-
-  a) Apply this edit
-  b) Skip this target
-  c) Adjust the edit
-
-[Additional targets...]
-
----
->> Select for each target (e.g., "Aa, Ba, Cb, Dc-[your adjustment]")
+AskUserQuestion:
+  questions:
+    - header: "{file_path}"
+      question: "{section name} -- Current: {brief quote}. Proposed: {proposed change}. Confidence: {HIGH|MEDIUM}"
+      multiSelect: false
+      options:
+        - label: "Apply"
+          description: "Apply this edit as proposed"
+        - label: "Skip"
+          description: "Do not modify this target"
+        - label: "Adjust"
+          description: "Apply with modifications (describe in Other)"
+    [... up to 4 targets per AskUserQuestion call]
 ```
 
-Wait for human response.
+If more than 4 targets, batch into multiple AskUserQuestion calls (max 4 questions each).
+
+Wait for human response to each batch before proceeding.
 
 **CRITICAL: MEMORY.md edits require explicit human approval.** Never auto-apply MEMORY.md changes even if confidence is HIGH. Always present them for review.
 
