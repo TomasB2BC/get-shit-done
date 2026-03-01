@@ -53,7 +53,8 @@ echo "$PLANNING_EXISTS"
 **Detect agent mode** (informational only -- this skill is always interactive):
 
 ```bash
-AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+# Agent mode only activates during /gsd:auto sessions (runtime marker)
+AGENT_MODE=$( [ -f .planning/.auto-dispatch-active ] && echo "true" || echo "false")
 ```
 
 **Parse $ARGUMENTS for initial statement:**

@@ -53,7 +53,16 @@ MAPPER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model gsd-c
 **Detect agent mode:**
 
 ```bash
-AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+# Agent mode only activates during /gsd:auto sessions (runtime marker)
+AGENT_MODE=$( [ -f .planning/.auto-dispatch-active ] && echo "true" || echo "false")
+
+# IMPORTANT: When AGENT_MODE=true, do NOT call `gsd-tools.js auto-decide`.
+# Instead, YOU (Claude) decide what is best by reading project context
+# (ROADMAP.md, REQUIREMENTS.md, STATE.md, relevant plans), reasoning about
+# the tradeoffs, and logging your decision via:
+#   node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+#     --type freeform --question "<question>" \
+#     --decision "<your choice>" --rationale "<why>"
 ```
 </step>
 
@@ -180,10 +189,9 @@ if [ "$AGENT_MODE" = "true" ]; then
   AUTO_MODE_CONTEXT="<auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions: generate the answer from codebase context, then log:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 </auto_mode>
 
 "
@@ -413,10 +421,9 @@ if [ "$AGENT_MODE" = "true" ]; then
   AUTO_MODE_CONTEXT="<auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions: generate the answer from codebase context, then log:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <answer> --rationale <sources>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 </auto_mode>
 
 "

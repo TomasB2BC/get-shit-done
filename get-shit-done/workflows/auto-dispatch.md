@@ -54,6 +54,12 @@ if [ "$AGENT_MODE" != "true" ]; then
   echo "Agent mode runs entire milestones autonomously without human input."
   exit 1
 fi
+
+# Create runtime session marker so spawned workflows know auto-dispatch is active.
+# Only /gsd:auto creates this marker. All other workflows check for it
+# instead of reading agent_mode from config.json, preventing the flag
+# from "leaking" into manual command invocations.
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > .planning/.auto-dispatch-active
 ```
 
 **2. Verify project initialized:**
@@ -743,10 +749,9 @@ case "$NEXT_ACTION" in
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -785,10 +790,9 @@ EOF_CONTEXT
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 - Orchestration: $ORCH_MODE, agent_teams.research=$AGENT_TEAMS_RESEARCH
 </auto_mode>
@@ -803,10 +807,9 @@ EOF_PLAN
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -820,10 +823,9 @@ EOF_EXEC
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -839,10 +841,9 @@ EOF_VERIFY
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -854,10 +855,9 @@ EOF_REPLAN
 <auto_mode>
 You are running in GSD agent mode. For ALL decisions:
 - Do NOT call AskUserQuestion
-- Use auto-decide for structured questions:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide --type <type> --question <question> --options '<json>' --raw
-- For freeform questions requiring LLM synthesis: generate the answer from project context, then log via:
-  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question <question> --decision <your_answer> --rationale <sources_used>
+- YOU decide what is best based on project context (requirements, roadmap, codebase state)
+- Read the relevant files, reason about tradeoffs, then log your decision:
+  node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision --type freeform --question "<the question>" --decision "<your decision>" --rationale "<why this is best>"
 - Agent mode config: agent_mode=true, auto_scope=$AUTO_SCOPE
 </auto_mode>
 
@@ -1257,6 +1257,11 @@ done  # End of while loop
 <step name="milestone_complete">
 When all phases are complete or MAX_PHASES reached, finalize dispatch.
 
+**Remove auto-dispatch session marker (always, regardless of exit reason):**
+```bash
+rm -f .planning/.auto-dispatch-active
+```
+
 **Print end-of-run summary:**
 ```bash
 echo ""
@@ -1330,6 +1335,20 @@ fi
 </process>
 
 <error_handling>
+
+## Session Marker Cleanup
+
+**CRITICAL:** On ANY exit path (normal completion, HALT, crash), remove the session marker:
+```bash
+rm -f .planning/.auto-dispatch-active
+```
+
+The `milestone_complete` step handles this for normal exits. For HALT exits,
+ensure the marker is removed before writing HALT.md. If the process is killed
+(Ctrl+C), the marker may persist -- users can manually delete it with:
+```bash
+rm .planning/.auto-dispatch-active
+```
 
 ## Error Types and Handling
 

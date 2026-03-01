@@ -36,7 +36,16 @@ RESEARCHER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.js resolve-model g
 **Detect agent mode:**
 
 ```bash
-AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+# Agent mode only activates during /gsd:auto sessions (runtime marker)
+AGENT_MODE=$( [ -f .planning/.auto-dispatch-active ] && echo "true" || echo "false")
+
+# IMPORTANT: When AGENT_MODE=true, do NOT call `gsd-tools.js auto-decide`.
+# Instead, YOU (Claude) decide what is best by reading project context
+# (ROADMAP.md, REQUIREMENTS.md, STATE.md, relevant plans), reasoning about
+# the tradeoffs, and logging your decision via:
+#   node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+#     --type freeform --question "<question>" \
+#     --decision "<your choice>" --rationale "<why>"
 ```
 
 ## Step 1: Parse Topic and Create Output Directory

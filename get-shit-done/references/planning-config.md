@@ -315,21 +315,34 @@ When true: workflows check for agent_mode and use auto-decide at each AskUserQue
 AGENT_MODE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js state load --raw | grep '^agent_mode=' | cut -d= -f2)
 ```
 
-Or inline in workflow:
+Or inline in workflow (checks runtime session marker, NOT config.json):
 
 ```bash
-AGENT_MODE=$(cat .planning/config.json 2>/dev/null | grep -o '"agent_mode"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+# Agent mode only activates during /gsd:auto sessions (runtime marker)
+AGENT_MODE=$( [ -f .planning/.auto-dispatch-active ] && echo "true" || echo "false")
 ```
 
-**Using auto-decide (replaces AskUserQuestion when agent_mode=true):**
+**Important:** Workflows MUST NOT read `agent_mode` from config.json directly.
+The config flag is a prerequisite that `/gsd:auto` validates. The runtime marker
+file `.planning/.auto-dispatch-active` is what actually activates autonomous behavior.
+This prevents `agent_mode: true` from leaking into manual command invocations.
+
+**Decision-making in agent mode (replaces AskUserQuestion when agent_mode=true):**
+
+Claude (the LLM) decides -- NOT a deterministic function. Read the relevant
+project context, reason about tradeoffs, then log your decision:
 
 ```bash
-DECISION=$(node ~/.claude/get-shit-done/bin/gsd-tools.js auto-decide \
-  --type "scope" \
+node ~/.claude/get-shit-done/bin/gsd-tools.js log-decision \
+  --type "freeform" \
   --question "Which features for v1?" \
-  --options '["All table stakes","Table stakes + differentiators"]' \
-  --raw)
+  --decision "All table stakes + key differentiators" \
+  --rationale "Based on REQUIREMENTS.md scope and competitive analysis"
 ```
+
+NOTE: `gsd-tools.js auto-decide` still exists for backwards compatibility but
+workflows should NOT call it. The override instruction near AGENT_MODE detection
+tells Claude to decide itself and log via `log-decision` instead.
 
 **Using log-decision (for freeform synthesis by workflow agents):**
 
