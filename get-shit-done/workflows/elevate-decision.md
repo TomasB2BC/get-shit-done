@@ -227,45 +227,78 @@ Wait for human response if BLOCKED. If human says "continue", proceed. Otherwise
 
 Based on the seed understanding from Pass 1, generate a set of 5 questions. Each question targets a specific aspect of the decision that is unclear, under-specified, or has multiple valid approaches.
 
-Each question has 3-4 lettered pre-digested options (informed by context and sources) plus a "write your own" option:
+Each question has 3 pre-digested options (informed by context and sources). AskUserQuestion adds "Other" automatically for custom responses.
 
+**Present questions using AskUserQuestion (batch of 4, then 1):**
+
+First batch (4 questions):
 ```
-## Deep Dig: Question Set {round}
+AskUserQuestion:
+  questions:
+    - header: "Deep Dig {round}"
+      question: "[Question about a specific aspect of the decision]"
+      multiSelect: false
+      options:
+        - label: "[Pre-digested option A]"
+          description: "[1 sentence explanation informed by context]"
+        - label: "[Pre-digested option B]"
+          description: "[1 sentence explanation]"
+        - label: "[Pre-digested option C]"
+          description: "[1 sentence explanation]"
+    - header: "Deep Dig {round}"
+      question: "[Question about another aspect]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Deep Dig {round}"
+      question: "[Question 3]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Deep Dig {round}"
+      question: "[Question 4]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+```
 
-**Q1: [Question about a specific aspect of the decision]**
-  a) [Pre-digested option informed by context -- 1 sentence]
-  b) [Pre-digested option -- 1 sentence]
-  c) [Pre-digested option -- 1 sentence]
-  d) Write your own
-
-**Q2: [Question about another aspect]**
-  a) [Pre-digested option -- 1 sentence]
-  b) [Pre-digested option -- 1 sentence]
-  c) [Pre-digested option -- 1 sentence]
-  d) Write your own
-
-**Q3: [Question]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
-**Q4: [Question]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
-**Q5: [Question]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
----
->> Which questions would you like to answer? (e.g., "1a, 2b, 3-custom, 5c" or "all")
->> For any, you can pick a letter OR write a custom response.
->> Type "enough" if you feel the picture is complete.
+Second batch (1 question + continue signal):
+```
+AskUserQuestion:
+  questions:
+    - header: "Deep Dig {round}"
+      question: "[Question 5]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Continue?"
+      question: "More questions or is the picture complete?"
+      multiSelect: false
+      options:
+        - label: "More questions"
+          description: "Generate another round of questions"
+        - label: "Enough"
+          description: "Picture is complete, move to boundaries"
 ```
 
 **Sub-step 4.2: Parse response**
@@ -356,44 +389,76 @@ Wait for human response. Respect their choice -- if they want more rounds, conti
 
 Based on the decision understanding from Passes 1-3, generate a set of 5 edge-case questions. Each tests the scope boundary: "Does this also apply to X?", "Does this override Y?", "What happens when Z?"
 
-Format (same pattern as Pass 3):
+**Present boundary questions using AskUserQuestion (same batching as Pass 3):**
 
+First batch (4 questions):
 ```
-## Boundaries: Question Set {round}
+AskUserQuestion:
+  questions:
+    - header: "Boundaries"
+      question: "[Edge case: does this apply to X?]"
+      multiSelect: false
+      options:
+        - label: "Applies"
+          description: "[applies to this case because...]"
+        - label: "Does not apply"
+          description: "[does NOT apply because...]"
+        - label: "Partially"
+          description: "[partially applies with conditions...]"
+    - header: "Boundaries"
+      question: "[Edge case: does this override existing behavior Y?]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Boundaries"
+      question: "[Edge case: what happens at boundary condition Z?]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Boundaries"
+      question: "[Edge case: interaction with adjacent system/decision]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+```
 
-**Q1: [Edge case question about scope -- does this apply to X?]**
-  a) [Pre-digested answer -- applies to this case because...]
-  b) [Pre-digested answer -- does NOT apply to this case because...]
-  c) [Pre-digested answer -- partially applies with conditions...]
-  d) Write your own
-
-**Q2: [Edge case -- does this override existing behavior Y?]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
-**Q3: [Edge case -- what happens at boundary condition Z?]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
-**Q4: [Edge case -- interaction with adjacent system/decision]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
-**Q5: [Edge case -- temporal: does this apply retroactively?]**
-  a) [Option]
-  b) [Option]
-  c) [Option]
-  d) Write your own
-
----
->> Which questions would you like to answer? (e.g., "1a, 2b, 3c" or "all")
->> Type "clear" if the boundaries are already obvious.
+Second batch (1 question + continue signal):
+```
+AskUserQuestion:
+  questions:
+    - header: "Boundaries"
+      question: "[Edge case: temporal -- does this apply retroactively?]"
+      multiSelect: false
+      options:
+        - label: "[Option A]"
+          description: "[explanation]"
+        - label: "[Option B]"
+          description: "[explanation]"
+        - label: "[Option C]"
+          description: "[explanation]"
+    - header: "Continue?"
+      question: "More boundary questions or are the edges clear?"
+      multiSelect: false
+      options:
+        - label: "More questions"
+          description: "Explore more edge cases"
+        - label: "Clear"
+          description: "Boundaries are defined, move to scope statement"
 ```
 
 **Sub-step 5.2: Parse responses**
@@ -464,42 +529,68 @@ Based on everything gathered in Passes 1-4, construct the strongest possible cou
 
 **Sub-step 6.2: Present 5 attack-angle questions**
 
+**Present attack angles using AskUserQuestion (batch of 4, then 1):**
+
+First batch (4 attack angles):
 ```
-## Stress Test: Attack Angles
+AskUserQuestion:
+  questions:
+    - header: "Contradiction"
+      question: "Does this contradict any existing decisions?"
+      multiSelect: false
+      options:
+        - label: "[Specific contradiction]"
+          description: "[contradiction identified with existing decision X]"
+        - label: "No contradiction"
+          description: "[compatible because...]"
+        - label: "Partial tension"
+          description: "[tension with Y but manageable because...]"
+    - header: "Scalability"
+      question: "Will this hold up as the project grows?"
+      multiSelect: false
+      options:
+        - label: "Scales well"
+          description: "[scales well because...]"
+        - label: "Needs revision later"
+          description: "[will need revision at specific threshold]"
+        - label: "Acceptable for now"
+          description: "[does not scale, but acceptable for current scope]"
+    - header: "Dependency Risk"
+      question: "What breaks if a dependency changes?"
+      multiSelect: false
+      options:
+        - label: "Low risk"
+          description: "[dependencies are stable/minimal]"
+        - label: "Specific risk"
+          description: "[if X changes, then Y breaks]"
+        - label: "Mitigated"
+          description: "[risk exists but mitigated by...]"
+    - header: "Opportunity Cost"
+      question: "What are we giving up by choosing this?"
+      multiSelect: false
+      options:
+        - label: "[Specific tradeoff]"
+          description: "[alternative we are foregoing and why acceptable]"
+        - label: "Minimal cost"
+          description: "[no strong alternatives exist]"
+        - label: "Significant but justified"
+          description: "[cost of foregoing X but justified because...]"
+```
 
-**Q1: Contradiction** -- Does this contradict any existing decisions?
-  a) [Pre-digested: specific contradiction identified with existing decision X]
-  b) [Pre-digested: no contradiction, compatible because...]
-  c) [Pre-digested: partial tension with Y but manageable because...]
-  d) Write your own assessment
-
-**Q2: Scalability** -- Will this hold up as the project grows?
-  a) [Pre-digested: scales well because...]
-  b) [Pre-digested: will need revision at [specific threshold or condition]]
-  c) [Pre-digested: does not scale, but acceptable for current scope because...]
-  d) Write your own assessment
-
-**Q3: Dependency Risk** -- What breaks if a dependency changes?
-  a) [Pre-digested: low risk because dependencies are stable/minimal]
-  b) [Pre-digested: specific dependency risk -- if X changes, then Y breaks]
-  c) [Pre-digested: risk exists but mitigated by...]
-  d) Write your own assessment
-
-**Q4: Opportunity Cost** -- What are we giving up by choosing this?
-  a) [Pre-digested: specific alternative we are foregoing and why that is acceptable]
-  b) [Pre-digested: minimal opportunity cost because no strong alternatives exist]
-  c) [Pre-digested: significant cost of foregoing X but justified because...]
-  d) Write your own assessment
-
-**Q5: Second-Order Effects** -- What downstream changes does this force?
-  a) [Pre-digested: specific downstream effect that needs attention]
-  b) [Pre-digested: no significant downstream effects expected]
-  c) [Pre-digested: downstream effects exist and need mitigation -- specifically...]
-  d) Write your own assessment
-
----
->> Answer all 5 or select which matter most.
->> The decision either survives stronger or gets modified.
+Second batch (1 attack angle):
+```
+AskUserQuestion:
+  questions:
+    - header: "Second-Order"
+      question: "What downstream changes does this force?"
+      multiSelect: false
+      options:
+        - label: "[Specific effect]"
+          description: "[downstream effect that needs attention]"
+        - label: "No effects"
+          description: "[no significant downstream effects expected]"
+        - label: "Needs mitigation"
+          description: "[downstream effects exist and need mitigation]"
 ```
 
 Wait for human responses.
