@@ -4,6 +4,14 @@ Validate built features through conversational testing with persistent state. Cr
 User tests, Claude records. One test at a time. Plain text responses.
 </purpose>
 
+<tool_rule>
+CRITICAL: After EVERY AskUserQuestion call, STOP your response immediately.
+Do NOT generate any follow-up text, analysis, or actions in the same response.
+The AskUserQuestion tool call must be the LAST thing in your response.
+Wait for the user's selection before generating your next response.
+This prevents the tool from auto-resolving before the user sees it.
+</tool_rule>
+
 <philosophy>
 **Show expected, ask if reality matches.**
 

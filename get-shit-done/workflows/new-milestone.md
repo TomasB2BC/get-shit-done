@@ -4,6 +4,14 @@ Start a new milestone cycle for an existing project. Loads project context, gath
 
 </purpose>
 
+<tool_rule>
+CRITICAL: After EVERY AskUserQuestion call, STOP your response immediately.
+Do NOT generate any follow-up text, analysis, or actions in the same response.
+The AskUserQuestion tool call must be the LAST thing in your response.
+Wait for the user's selection before generating your next response.
+This prevents the tool from auto-resolving before the user sees it.
+</tool_rule>
+
 <required_reading>
 
 Read all files referenced by the invoking prompt's execution_context before starting.

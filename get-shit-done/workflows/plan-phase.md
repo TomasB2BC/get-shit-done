@@ -2,6 +2,14 @@
 Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification. Default flow: Research (if needed) -> Plan -> Verify -> Done. Orchestrates gsd-phase-researcher, gsd-planner, and gsd-plan-checker agents with a revision loop (max 3 iterations).
 </purpose>
 
+<tool_rule>
+CRITICAL: After EVERY AskUserQuestion call, STOP your response immediately.
+Do NOT generate any follow-up text, analysis, or actions in the same response.
+The AskUserQuestion tool call must be the LAST thing in your response.
+Wait for the user's selection before generating your next response.
+This prevents the tool from auto-resolving before the user sees it.
+</tool_rule>
+
 <required_reading>
 Read all files referenced by the invoking prompt's execution_context before starting.
 
